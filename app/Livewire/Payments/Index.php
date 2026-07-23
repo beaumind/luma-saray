@@ -14,20 +14,30 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['title' => 'پرداخت‌ها'])]
 class Index extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public string $building_id_filter = '';
+
     public string $search = '';
+
     public bool $showModal = false;
 
     public string $unit_id = '';
+
     public string $amount = '';
+
     public string $payment_date = '';
+
     public string $tracking_number = '';
+
     public string $notes = '';
+
     public $receipt;
 
-    public function updatingSearch(): void { $this->resetPage(); }
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
 
     public function openCreate(): void
     {
@@ -79,9 +89,8 @@ class Index extends Component
     public function render()
     {
         $payments = Payment::with(['unit.building', 'creator'])
-            ->when($this->search, fn($q) => $q->whereHas('unit', fn($uq) =>
-                $uq->where('number', 'like', "%{$this->search}%")))
-            ->when($this->building_id_filter, fn($q) => $q->where('building_id', $this->building_id_filter))
+            ->when($this->search, fn ($q) => $q->whereHas('unit', fn ($uq) => $uq->where('number', 'like', "%{$this->search}%")))
+            ->when($this->building_id_filter, fn ($q) => $q->where('building_id', $this->building_id_filter))
             ->orderByDesc('payment_date')
             ->paginate(15);
 

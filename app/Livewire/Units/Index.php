@@ -21,19 +21,34 @@ class Index extends Component
     public string $building_id = '';
 
     public bool $showModal = false;
+
     public ?int $editingId = null;
 
     public string $unit_building_id = '';
+
     public string $number = '';
+
     public string $floor = '1';
+
     public string $area = '';
+
     public string $bedrooms = '2';
+
     public string $parking_count = '1';
+
     public string $storage_count = '0';
+
     public string $notes = '';
 
-    public function updatingSearch(): void { $this->resetPage(); }
-    public function updatingBuildingId(): void { $this->resetPage(); }
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingBuildingId(): void
+    {
+        $this->resetPage();
+    }
 
     public function openCreate(): void
     {
@@ -115,8 +130,8 @@ class Index extends Component
     {
         $units = Unit::query()
             ->with(['building', 'activeResidents'])
-            ->when($this->search, fn($q) => $q->where('number', 'like', "%{$this->search}%"))
-            ->when($this->building_id, fn($q) => $q->where('building_id', $this->building_id))
+            ->when($this->search, fn ($q) => $q->where('number', 'like', "%{$this->search}%"))
+            ->when($this->building_id, fn ($q) => $q->where('building_id', $this->building_id))
             ->orderBy('building_id')
             ->orderBy('floor')
             ->orderBy('number')

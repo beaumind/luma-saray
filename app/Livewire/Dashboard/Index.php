@@ -38,7 +38,7 @@ class Index extends Component
         $debtorUnits = Unit::where('is_active', true)
             ->with(['building', 'activeResidents'])
             ->get()
-            ->filter(fn($u) => $u->balance > 0)
+            ->filter(fn ($u) => $u->balance > 0)
             ->sortByDesc('balance')
             ->take(5);
 

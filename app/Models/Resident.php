@@ -37,7 +37,7 @@ class Resident extends Model
 
     public function getTypeLabel(): string
     {
-        return match($this->type) {
+        return match ($this->type) {
             'owner' => 'مالک',
             'tenant' => 'مستأجر',
             default => $this->type,

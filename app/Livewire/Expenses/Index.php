@@ -15,25 +15,43 @@ use Livewire\WithPagination;
 #[Layout('layouts.app', ['title' => 'هزینه‌ها'])]
 class Index extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public string $building_id_filter = '';
+
     public string $search = '';
+
     public bool $showModal = false;
 
     public string $building_id = '';
+
     public string $expense_category_id = '';
+
     public string $title = '';
+
     public string $amount = '';
+
     public string $expense_date = '';
+
     public string $description = '';
+
     public string $distribution = 'all_units';
+
     public string $responsible = 'owner';
+
     public array $selected_unit_ids = [];
+
     public $attachments = [];
 
-    public function updatingSearch(): void { $this->resetPage(); }
-    public function updatingBuildingIdFilter(): void { $this->resetPage(); }
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingBuildingIdFilter(): void
+    {
+        $this->resetPage();
+    }
 
     public function openCreate(): void
     {
@@ -94,8 +112,8 @@ class Index extends Component
     public function render()
     {
         $expenses = Expense::with(['building', 'category', 'creator'])
-            ->when($this->search, fn($q) => $q->where('title', 'like', "%{$this->search}%"))
-            ->when($this->building_id_filter, fn($q) => $q->where('building_id', $this->building_id_filter))
+            ->when($this->search, fn ($q) => $q->where('title', 'like', "%{$this->search}%"))
+            ->when($this->building_id_filter, fn ($q) => $q->where('building_id', $this->building_id_filter))
             ->orderByDesc('expense_date')
             ->paginate(15);
 

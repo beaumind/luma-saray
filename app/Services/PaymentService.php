@@ -27,7 +27,7 @@ class PaymentService
             $this->ledger->recordPayment(
                 $unit,
                 $payment->amount,
-                "پرداخت واحد {$unit->number}" . ($payment->tracking_number ? " - کد پیگیری: {$payment->tracking_number}" : ''),
+                "پرداخت واحد {$unit->number}".($payment->tracking_number ? " - کد پیگیری: {$payment->tracking_number}" : ''),
                 $payment->payment_date->format('Y-m-d'),
                 $payment->tracking_number,
                 $payment->id

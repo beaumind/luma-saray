@@ -9,7 +9,6 @@ use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder

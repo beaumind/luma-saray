@@ -4,7 +4,6 @@ namespace App\Livewire\Buildings;
 
 use App\Models\Building;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -14,16 +13,25 @@ class Index extends Component
     use WithPagination;
 
     public string $search = '';
+
     public bool $showModal = false;
+
     public ?int $editingId = null;
 
     public string $name = '';
+
     public string $address = '';
+
     public string $city = 'تهران';
+
     public string $floors = '1';
+
     public string $total_units = '';
+
     public string $manager_name = '';
+
     public string $manager_mobile = '';
+
     public string $description = '';
 
     public function updatingSearch(): void
@@ -93,6 +101,7 @@ class Index extends Component
         $building = Building::withCount('units')->findOrFail($id);
         if ($building->units_count > 0) {
             session()->flash('error', 'این ساختمان دارای واحد است و قابل حذف نیست.');
+
             return;
         }
         $building->delete();
@@ -115,7 +124,7 @@ class Index extends Component
     public function render()
     {
         $buildings = Building::query()
-            ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
+            ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%")
                 ->orWhere('address', 'like', "%{$this->search}%"))
             ->withCount('units')
             ->latest()

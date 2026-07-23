@@ -13,8 +13,11 @@ class Index extends Component
 
     // Category form
     public bool $showCategoryModal = false;
+
     public ?int $editingCategoryId = null;
+
     public string $cat_name = '';
+
     public string $cat_color = '#6366f1';
 
     public function openCategoryCreate(): void
@@ -62,6 +65,7 @@ class Index extends Component
     public function render()
     {
         $categories = ExpenseCategory::orderBy('name')->get();
+
         return view('livewire.settings.index', compact('categories'));
     }
 }

@@ -14,13 +14,19 @@ class Index extends Component
     use WithPagination;
 
     public string $search = '';
+
     public bool $showModal = false;
+
     public ?int $editingId = null;
 
     public string $name = '';
+
     public string $mobile = '';
+
     public string $password = '';
+
     public string $role = 'manager';
+
     public bool $is_active = true;
 
     public function openCreate(): void
@@ -46,11 +52,11 @@ class Index extends Component
     {
         $rules = [
             'name' => 'required|string|max:200',
-            'mobile' => 'required|string|max:20|unique:users,mobile' . ($this->editingId ? ",{$this->editingId}" : ''),
+            'mobile' => 'required|string|max:20|unique:users,mobile'.($this->editingId ? ",{$this->editingId}" : ''),
             'role' => 'required|string|exists:roles,name',
         ];
 
-        if (!$this->editingId) {
+        if (! $this->editingId) {
             $rules['password'] = 'required|string|min:6';
         } else {
             $rules['password'] = 'nullable|string|min:6';
@@ -86,8 +92,10 @@ class Index extends Component
     public function toggleActive(int $id): void
     {
         $user = User::findOrFail($id);
-        if ($user->id === auth()->id()) return;
-        $user->update(['is_active' => !$user->is_active]);
+        if ($user->id === auth()->id()) {
+            return;
+        }
+        $user->update(['is_active' => ! $user->is_active]);
     }
 
     private function resetForm(): void
@@ -103,7 +111,7 @@ class Index extends Component
     public function render()
     {
         $users = User::with('roles')
-            ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
+            ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%")
                 ->orWhere('mobile', 'like', "%{$this->search}%"))
             ->orderBy('name')
             ->paginate(15);

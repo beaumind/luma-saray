@@ -70,6 +70,7 @@ class Unit extends Model
     {
         $debits = $this->ledgerTransactions()->where('direction', 'debit')->sum('amount');
         $credits = $this->ledgerTransactions()->where('direction', 'credit')->sum('amount');
+
         return (int) ($debits - $credits);
     }
 

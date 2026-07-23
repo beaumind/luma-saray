@@ -17,27 +17,49 @@ class Index extends Component
 
     #[Url]
     public string $search = '';
+
     #[Url]
     public string $building_id = '';
+
     #[Url]
     public string $type_filter = '';
 
     public bool $showModal = false;
+
     public ?int $editingId = null;
 
     public string $unit_id = '';
+
     public string $type = 'owner';
+
     public string $name = '';
+
     public string $mobile = '';
+
     public string $national_code = '';
+
     public string $resident_count = '1';
+
     public string $move_in_date = '';
+
     public string $move_out_date = '';
+
     public string $notes = '';
 
-    public function updatingSearch(): void { $this->resetPage(); }
-    public function updatingBuildingId(): void { $this->resetPage(); }
-    public function updatingTypeFilter(): void { $this->resetPage(); }
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingBuildingId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTypeFilter(): void
+    {
+        $this->resetPage();
+    }
 
     public function openCreate(): void
     {
@@ -123,10 +145,10 @@ class Index extends Component
     public function render()
     {
         $residents = Resident::with(['unit.building'])
-            ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
+            ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%")
                 ->orWhere('mobile', 'like', "%{$this->search}%"))
-            ->when($this->type_filter, fn($q) => $q->where('type', $this->type_filter))
-            ->when($this->building_id, fn($q) => $q->whereHas('unit', fn($uq) => $uq->where('building_id', $this->building_id)))
+            ->when($this->type_filter, fn ($q) => $q->where('type', $this->type_filter))
+            ->when($this->building_id, fn ($q) => $q->whereHas('unit', fn ($uq) => $uq->where('building_id', $this->building_id)))
             ->where('is_active', true)
             ->orderBy('name')
             ->paginate(15);

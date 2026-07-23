@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Building;
 use App\Models\ChargeTemplate;
 use App\Models\Unit;
 

@@ -36,7 +36,7 @@ class ChargeTemplate extends Model
     {
         $residentCount = $unit->active_resident_count ?: 1;
 
-        return match($this->type) {
+        return match ($this->type) {
             'fixed' => $this->fixed_amount,
             'per_resident' => $this->per_resident_amount * $residentCount,
             'combined' => $this->fixed_amount + ($this->per_resident_amount * $residentCount),
@@ -46,7 +46,7 @@ class ChargeTemplate extends Model
 
     public function getTypeLabel(): string
     {
-        return match($this->type) {
+        return match ($this->type) {
             'fixed' => 'ثابت',
             'per_resident' => 'به ازای هر نفر',
             'combined' => 'ترکیبی',
@@ -56,7 +56,7 @@ class ChargeTemplate extends Model
 
     public function getPeriodLabel(): string
     {
-        return match($this->period) {
+        return match ($this->period) {
             'monthly' => 'ماهانه',
             'quarterly' => 'فصلی',
             'yearly' => 'سالانه',

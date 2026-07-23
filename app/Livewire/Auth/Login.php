@@ -23,7 +23,7 @@ class Login extends Component
     {
         $this->validate();
 
-        if (!Auth::attempt(['mobile' => $this->mobile, 'password' => $this->password, 'is_active' => true], $this->remember)) {
+        if (! Auth::attempt(['mobile' => $this->mobile, 'password' => $this->password, 'is_active' => true], $this->remember)) {
             throw ValidationException::withMessages([
                 'mobile' => 'شماره موبایل یا رمز عبور اشتباه است.',
             ]);

@@ -4,7 +4,6 @@ namespace App\Livewire\Charges;
 
 use App\Models\Building;
 use App\Models\ChargeTemplate;
-use App\Models\Unit;
 use App\Services\ChargeService;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -16,22 +15,37 @@ class Index extends Component
     use WithPagination;
 
     public string $building_id = '';
+
     public bool $showModal = false;
+
     public ?int $editingId = null;
+
     public bool $showApplyModal = false;
+
     public ?int $applyTemplateId = null;
+
     public string $apply_date = '';
+
     public string $apply_period = '';
 
     public string $tpl_building_id = '';
+
     public string $title = '';
+
     public string $type = 'fixed';
+
     public string $period = 'monthly';
+
     public string $fixed_amount = '';
+
     public string $per_resident_amount = '';
+
     public string $description = '';
 
-    public function updatingBuildingId(): void { $this->resetPage(); }
+    public function updatingBuildingId(): void
+    {
+        $this->resetPage();
+    }
 
     public function openCreate(): void
     {
@@ -130,7 +144,7 @@ class Index extends Component
     public function render()
     {
         $templates = ChargeTemplate::with('building')
-            ->when($this->building_id, fn($q) => $q->where('building_id', $this->building_id))
+            ->when($this->building_id, fn ($q) => $q->where('building_id', $this->building_id))
             ->orderBy('building_id')
             ->orderBy('title')
             ->paginate(15);

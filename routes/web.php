@@ -25,12 +25,13 @@ Route::post('/logout', function () {
     auth()->logout();
     request()->session()->invalidate();
     request()->session()->regenerateToken();
+
     return redirect()->route('login');
 })->name('logout');
 
 // Auth routes
 Route::middleware('auth')->group(function () {
-    Route::get('/', fn() => redirect()->route('dashboard'));
+    Route::get('/', fn () => redirect()->route('dashboard'));
     Route::get('/dashboard', DashboardIndex::class)->name('dashboard');
 
     Route::get('/buildings', BuildingsIndex::class)->name('buildings.index');

@@ -18,10 +18,15 @@ class Show extends Component
 
     // Payment modal
     public bool $showPaymentModal = false;
+
     public string $pay_amount = '';
+
     public string $pay_date = '';
+
     public string $pay_tracking = '';
+
     public string $pay_notes = '';
+
     public $receipt;
 
     public function mount(Unit $unit): void
@@ -78,6 +83,6 @@ class Show extends Component
         $balance = $this->unit->balance;
 
         return view('livewire.units.show', compact('transactions', 'balance'))
-            ->title($this->unit->number . ' - ' . $this->unit->building->name);
+            ->title($this->unit->number.' - '.$this->unit->building->name);
     }
 }
