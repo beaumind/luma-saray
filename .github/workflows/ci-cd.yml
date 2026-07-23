@@ -113,6 +113,7 @@ jobs:
           DB_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
           DB_DATABASE: ${{ secrets.MYSQL_DATABASE }}
           APP_KEY: ${{ secrets.APP_KEY }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
           helm upgrade --install lumasaray ./.chart \
           --namespace faranex-lumasaray \
@@ -127,4 +128,5 @@ jobs:
           --set-string env.DB_PORT=3306 \
           --set-string env.DB_USERNAME="$DB_USERNAME" \
           --set-string env.DB_PASSWORD="$DB_PASSWORD" \
-          --set-string env.DB_DATABASE="$DB_DATABASE"
+          --set-string env.DB_DATABASE="$DB_DATABASE" \
+          --set-string env.ADMIN_PASSWORD="$ADMIN_PASSWORD"

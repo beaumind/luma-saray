@@ -9,25 +9,12 @@ use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Roles
-        $admin = Role::create(['name' => 'admin', 'guard_name' => 'web']);
-        $manager = Role::create(['name' => 'manager', 'guard_name' => 'web']);
-        $accountant = Role::create(['name' => 'accountant', 'guard_name' => 'web']);
-
-        // Admin user
-        $user = User::create([
-            'name' => 'مدیر سیستم',
-            'mobile' => '09121234567',
-            'password' => bcrypt('password'),
-            'is_active' => true,
-        ]);
-        $user->assignRole('admin');
+        $this->call(AdminSeeder::class);
 
         // Demo manager
         $manager1 = User::create([

@@ -48,6 +48,8 @@ spec:
             - |
               echo "Running database migrations..."
               cd /var/www/html && CACHE_STORE=array php artisan migrate --force
+              echo "Seeding admin user and roles..."
+              cd /var/www/html && CACHE_STORE=array php artisan db:seed --class=AdminSeeder --force
 
       containers:
         - name: {{ .Chart.Name }}-nginx
