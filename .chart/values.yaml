@@ -3,6 +3,7 @@ imagePullSecrets:
 
 replicaCount: 1
 
+
 scheduler:
   enabled: true
   resources:
