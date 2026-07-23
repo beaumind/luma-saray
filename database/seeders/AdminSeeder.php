@@ -14,7 +14,7 @@ class AdminSeeder extends Seeder
             Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
 
-        $mobile = env('ADMIN_MOBILE', '09121234567');
+        $mobile = env('ADMIN_MOBILE', '09121714525');
 
         if (User::where('mobile', $mobile)->exists()) {
             return;
