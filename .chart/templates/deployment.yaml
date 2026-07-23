@@ -47,7 +47,7 @@ spec:
           args:
             - |
               echo "Running database migrations..."
-              cd /var/www/html && php artisan migrate --force
+              cd /var/www/html && CACHE_STORE=array php artisan migrate --force
 
       containers:
         - name: {{ .Chart.Name }}-nginx
