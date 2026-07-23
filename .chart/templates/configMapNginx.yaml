@@ -10,7 +10,7 @@ data:
         listen {{ .Values.nginxService.internalPort }};
         listen [::]:{{ .Values.nginxService.internalPort }};
 
-        server_name lumasaray.faranex.com;
+        server_name saray.luma360.ir;
         root /var/www/html/public;
 
         client_max_body_size 100M;
