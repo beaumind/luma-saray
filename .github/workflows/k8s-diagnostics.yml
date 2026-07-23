@@ -1,0 +1,42 @@
+name: K8s Diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Cluster diagnostics (faranex-lumasaray)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          printf '%s' "${{ secrets.KUBECONFIG_YML }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Workloads and events
+        run: |
+          kubectl -n faranex-lumasaray get deploy,rs,pods -o wide
+          echo "================ events ================"
+          kubectl -n faranex-lumasaray get events --sort-by=.lastTimestamp | tail -50
+
+      - name: Describe pods
+        run: kubectl -n faranex-lumasaray describe pods | tail -150
+
+      - name: Container logs (current + previous)
+        run: |
+          for p in $(kubectl -n faranex-lumasaray get pods -o name); do
+            echo "================ $p (current) ================"
+            kubectl -n faranex-lumasaray logs "$p" --all-containers --tail=80 || true
+            echo "================ $p (previous) ================"
+            kubectl -n faranex-lumasaray logs "$p" --all-containers --previous --tail=80 || true
+          done
+
+      - name: Helm history
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash >/dev/null
+          helm -n faranex-lumasaray history lumasaray --max 8

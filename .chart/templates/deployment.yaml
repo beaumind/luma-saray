@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "app.fullname" . }}
+  labels:
+    app: {{ template "app.name" . }}
+    chart: {{ template "app.chart" . }}
+    component: worker
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "app.name" . }}
+      release: {{ .Release.Name }}
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: {{ template "app.name" . }}
+        release: {{ .Release.Name }}
+        component: worker
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: source-code
+          emptyDir: {}
+        - name: nginx-vhost
+          configMap:
+            name: {{ template "app.name" . }}-nginx-vhost
+        # Writable session storage (SESSION_DRIVER=file requires write access)
+        - name: sessions
+          emptyDir: {}
+
+      initContainers:
+        - name: artisan-migrate
+          image: "{{ .Values.image.php.repository }}:{{ .Values.image.php.tag }}"
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: {{ template "app.fullname" . }}-env
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Running database migrations..."
+              cd /var/www/html && php artisan migrate --force
+
+      containers:
+        - name: {{ .Chart.Name }}-nginx
+          image: "{{ .Values.image.nginx.repository }}:{{ .Values.image.nginx.tag }}"
+          imagePullPolicy: {{ .Values.image.nginx.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.nginxService.internalPort }}
+          volumeMounts:
+            - name: nginx-vhost
+              mountPath: /etc/nginx/conf.d
+            - name: source-code
+              mountPath: /var/www/html/
+
+        - name: {{ .Chart.Name }}-phpfpm
+          image: "{{ .Values.image.php.repository }}:{{ .Values.image.php.tag }}"
+          imagePullPolicy: {{ .Values.image.php.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ template "app.fullname" . }}-env
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "-c", "cp -r /var/www/html/. /laravel"]
+          ports:
+            - name: http-phpfpm
+              containerPort: {{ .Values.phpfpmService.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: source-code
+              mountPath: /laravel
+            - name: sessions
+              mountPath: /var/www/html/storage/framework/sessions

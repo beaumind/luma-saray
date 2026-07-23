@@ -1,0 +1,36 @@
+name: K8s Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: "Helm revision to roll back to"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    name: Helm rollback (faranex-lumasaray)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          printf '%s' "${{ secrets.KUBECONFIG_YML }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Install Helm
+        run: curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Rollback
+        run: |
+          helm -n faranex-lumasaray history lumasaray --max 6
+          helm -n faranex-lumasaray rollback lumasaray "${{ inputs.revision }}" --wait --timeout 5m
+
+      - name: Verify rollout
+        run: |
+          kubectl -n faranex-lumasaray rollout status deploy/lumasaray --timeout=240s
+          kubectl -n faranex-lumasaray get pods -o wide

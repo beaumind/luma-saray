@@ -1,0 +1,74 @@
+networks:
+    lumasaray:
+        driver: bridge
+
+services:
+    nginx:
+        container_name: lumasaray-nginx
+        image: nginx:stable-alpine
+        ports:
+            - "8080:80"
+        networks:
+            - lumasaray
+        volumes:
+            - ./:/var/www/html
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+            - ./docker/nginx/logs/:/var/log/nginx
+        depends_on:
+            - mysql
+            - php
+
+    mysql:
+        container_name: lumasaray-mysql
+        image: mysql:8.0
+        restart: unless-stopped
+        ports:
+            - "4306:3306"
+        networks:
+            - lumasaray
+        tty: true
+        volumes:
+            - mysql:/var/data/mysql
+        environment:
+            - MYSQL_ROOT_PASSWORD=root
+            - MYSQL_DATABASE=luma_saray
+            - SERVICE_TAG=dev
+            - SERVICE_NAME=mysql
+
+    php:
+        container_name: lumasaray-php
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        ports:
+            - "9002:9000"
+        networks:
+            - lumasaray
+        volumes:
+            - ./:/var/www/html
+            - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+
+    redis:
+        container_name: lumasaray-redis
+        image: redis:7-alpine
+        networks:
+            - lumasaray
+        ports:
+            - "4381:6379"
+        volumes:
+            - ./docker/redis:/data
+
+    artisan:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        container_name: lumasaray-artisan
+        volumes:
+            - ./:/var/www/html
+        working_dir: /var/www/html
+        entrypoint: ['php', '/var/www/html/artisan']
+        networks:
+            - lumasaray
+
+volumes:
+    mysql: {}

@@ -1,0 +1,45 @@
+{{- if .Values.scheduler.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "app.fullname" . }}-scheduler
+  labels:
+    app: {{ template "app.name" . }}
+    chart: {{ template "app.chart" . }}
+    component: scheduler
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ template "app.name" . }}
+      release: {{ .Release.Name }}
+      component: scheduler
+  template:
+    metadata:
+      labels:
+        app: {{ template "app.name" . }}
+        release: {{ .Release.Name }}
+        component: scheduler
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: scheduler
+          image: "{{ .Values.image.php.repository }}:{{ .Values.image.php.tag }}"
+          imagePullPolicy: {{ .Values.image.php.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ template "app.fullname" . }}-env
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cd /var/www/html && exec php artisan schedule:work --no-interaction
+          resources:
+            {{- toYaml .Values.scheduler.resources | nindent 12 }}
+{{- end }}

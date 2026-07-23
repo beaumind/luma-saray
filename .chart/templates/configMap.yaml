@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "app.fullname" . }}-env
+data:
+  APP_NAME: "{{ .Values.env.APP_NAME }}"
+  APP_ENV: "{{ .Values.env.APP_ENV }}"
+  APP_KEY: "{{ .Values.env.APP_KEY }}"
+  APP_DEBUG: "{{ .Values.env.APP_DEBUG }}"
+  APP_URL: "{{ .Values.env.APP_URL }}"
+  APP_LOCALE: "{{ .Values.env.APP_LOCALE }}"
+  APP_FALLBACK_LOCALE: "{{ .Values.env.APP_FALLBACK_LOCALE }}"
+
+  LOG_CHANNEL: "{{ .Values.env.LOG_CHANNEL }}"
+  LOG_DEPRECATIONS_CHANNEL: "{{ .Values.env.LOG_DEPRECATIONS_CHANNEL }}"
+  LOG_LEVEL: "{{ .Values.env.LOG_LEVEL }}"
+
+  DB_CONNECTION: "{{ .Values.env.DB_CONNECTION }}"
+  DB_HOST: "{{ .Values.env.DB_HOST | default "" }}"
+  DB_PORT: "{{ .Values.env.DB_PORT | default "3306" }}"
+  DB_DATABASE: "{{ .Values.env.DB_DATABASE | default "" }}"
+  DB_USERNAME: "{{ .Values.env.DB_USERNAME | default "" }}"
+  DB_PASSWORD: "{{ .Values.env.DB_PASSWORD | default "" }}"
+
+  BROADCAST_CONNECTION: "{{ .Values.env.BROADCAST_CONNECTION }}"
+  CACHE_STORE: "{{ .Values.env.CACHE_STORE }}"
+  FILESYSTEM_DISK: "{{ .Values.env.FILESYSTEM_DISK }}"
+  QUEUE_CONNECTION: "{{ .Values.env.QUEUE_CONNECTION }}"
+  SESSION_DRIVER: "{{ .Values.env.SESSION_DRIVER }}"
+  SESSION_LIFETIME: "{{ .Values.env.SESSION_LIFETIME }}"
+
+  REDIS_CLIENT: "{{ .Values.env.REDIS_CLIENT }}"
+  REDIS_HOST: "{{ .Values.env.REDIS_HOST }}"
+  REDIS_PASSWORD: "{{ .Values.env.REDIS_PASSWORD | default "" }}"
+  REDIS_PORT: "{{ .Values.env.REDIS_PORT | default "6379" }}"
+
+  MAIL_MAILER: "{{ .Values.env.MAIL_MAILER }}"
+  MAIL_HOST: "{{ .Values.env.MAIL_HOST | default "" }}"
+  MAIL_PORT: "{{ .Values.env.MAIL_PORT | default "" }}"
+  MAIL_USERNAME: "{{ .Values.env.MAIL_USERNAME | default "" }}"
+  MAIL_PASSWORD: "{{ .Values.env.MAIL_PASSWORD | default "" }}"
+  MAIL_ENCRYPTION: "{{ .Values.env.MAIL_ENCRYPTION | default "" }}"
+  MAIL_FROM_ADDRESS: "{{ .Values.env.MAIL_FROM_ADDRESS }}"
+  MAIL_FROM_NAME: "{{ .Values.env.MAIL_FROM_NAME }}"
