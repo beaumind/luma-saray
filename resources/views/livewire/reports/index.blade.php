@@ -1,108 +1,124 @@
-<div class="space-y-6">
+@php
+    use App\Support\Fmt;
+    $stateBg = ['paid' => '#dcfce7', 'partial' => '#fef9c3', 'unpaid' => '#fee2e2', 'neutral' => '#ffffff'];
+    $stateFg = ['paid' => '#16a34a', 'partial' => '#b45309', 'unpaid' => '#dc2626', 'neutral' => '#71717a'];
+    $visibleCols = collect($matrix['columns'])->filter(fn($c) => in_array($c['key'], ['number','resident']) || in_array($c['key'], $cols));
+@endphp
+<div>
+    <x-app-header title="گزارش‌ها" :back="route('dashboard')" />
 
-    {{-- Filters --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap items-center gap-3">
-        <select wire:model.live="building_id"
-            class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-            <option value="">همه ساختمان‌ها</option>
-            @foreach($buildings as $b)
-                <option value="{{ $b->id }}">{{ $b->name }}</option>
-            @endforeach
-        </select>
-        @php $jNow = \Morilog\Jalali\Jalalian::now()->getYear(); @endphp
-        <select wire:model.live="year"
-            class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-            @for($y = $jNow; $y >= $jNow - 3; $y--)
-                <option value="{{ $y }}">{{ \App\Support\JDate::toPersianDigits((string) $y) }}</option>
-            @endfor
-        </select>
-        @php $jMonths = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند']; @endphp
-        <select wire:model.live="month"
-            class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-            @foreach($jMonths as $i => $mName)
-                <option value="{{ str_pad($i + 1, 2, '0', STR_PAD_LEFT) }}">{{ $mName }}</option>
-            @endforeach
-        </select>
-    </div>
+    <div class="flex flex-col gap-3.5 px-4 pt-4">
 
-    {{-- Summary cards --}}
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <div class="bg-white rounded-2xl border border-green-100 shadow-sm p-5">
-            <p class="text-sm text-gray-500">پرداخت این ماه</p>
-            <p class="text-2xl font-bold text-green-600 mt-1">{{ number_format($monthlyPayments) }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">تومان</p>
+        {{-- Filters --}}
+        <div class="flex gap-2">
+            <select wire:model.live="building_id" class="h-9 flex-1 rounded-[10px] border border-[#ececef] bg-white px-2.5 text-[12.5px] outline-none">
+                <option value="">همه ساختمان‌ها</option>
+                @foreach($buildings as $b)<option value="{{ $b->id }}">{{ $b->name }}</option>@endforeach
+            </select>
+            <select wire:model.live="monthsBack" class="h-9 w-[110px] rounded-[10px] border border-[#ececef] bg-white px-2.5 text-[12.5px] outline-none">
+                <option value="3">۳ ماه اخیر</option>
+                <option value="4">۴ ماه اخیر</option>
+                <option value="6">۶ ماه اخیر</option>
+            </select>
         </div>
-        <div class="bg-white rounded-2xl border border-red-100 shadow-sm p-5">
-            <p class="text-sm text-gray-500">هزینه این ماه</p>
-            <p class="text-2xl font-bold text-red-500 mt-1">{{ number_format($monthlyExpenses) }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">تومان</p>
-        </div>
-        <div class="bg-white rounded-2xl border border-blue-100 shadow-sm p-5">
-            <p class="text-sm text-gray-500">پرداخت امسال</p>
-            <p class="text-2xl font-bold text-blue-600 mt-1">{{ number_format($yearlyPayments) }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">تومان</p>
-        </div>
-        <div class="bg-white rounded-2xl border border-orange-100 shadow-sm p-5">
-            <p class="text-sm text-gray-500">هزینه امسال</p>
-            <p class="text-2xl font-bold text-orange-500 mt-1">{{ number_format($yearlyExpenses) }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">تومان</p>
-        </div>
-    </div>
 
-    {{-- Monthly chart (simple HTML bars) --}}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 class="font-semibold text-gray-900 mb-5">روند ۱۲ ماه اخیر</h3>
-        @php
-            $maxVal = $monthlyData->max(fn($d) => max($d['payments'], $d['expenses'])) ?: 1;
-        @endphp
-        <div class="flex items-end gap-2 h-40">
-            @foreach($monthlyData as $d)
-            <div class="flex-1 flex flex-col items-center gap-1">
-                <div class="w-full flex gap-0.5 items-end" style="height: 100px">
-                    <div class="flex-1 rounded-t-sm bg-green-400 transition-all" style="height: {{ max(2, ($d['payments'] / $maxVal) * 100) }}%"></div>
-                    <div class="flex-1 rounded-t-sm bg-red-400 transition-all" style="height: {{ max(2, ($d['expenses'] / $maxVal) * 100) }}%"></div>
-                </div>
-                <span class="text-gray-400 text-[10px] truncate w-full text-center">{{ mb_substr($d['label'], -2) }}</span>
+        {{-- Summary card --}}
+        <div class="rounded-[16px] border border-[#ececef] bg-white p-4">
+            <div class="mb-3.5 flex items-center justify-between">
+                <div class="text-[14px] font-bold text-[#18181b]">گزارش سال {{ $yearLabel }}</div>
+                <span class="text-[11px] text-[#a1a1aa]">{{ Fmt::fa(count($matrix['rows'])) }} واحد</span>
             </div>
-            @endforeach
-        </div>
-        <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
-            <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-sm bg-green-400"></div>
-                <span>پرداخت</span>
-            </div>
-            <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-sm bg-red-400"></div>
-                <span>هزینه</span>
-            </div>
-        </div>
-    </div>
-
-    {{-- Debtor units --}}
-    @if($debtorUnits->count() > 0)
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100">
-            <h3 class="font-semibold text-gray-900">واحدهای بدهکار</h3>
-        </div>
-        <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-100">
-                <tr>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">واحد</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">ساختمان</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">بدهی (تومان)</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                @foreach($debtorUnits as $unit)
-                <tr>
-                    <td class="px-5 py-3">{{ $unit['number'] }}</td>
-                    <td class="px-5 py-3 text-gray-500">{{ $unit['building']['name'] ?? '-' }}</td>
-                    <td class="px-5 py-3 font-bold text-red-600">{{ number_format($unit['balance']) }}</td>
-                </tr>
+            <div class="flex flex-col gap-3">
+                @foreach($summary as $r)
+                    <div>
+                        <div class="mb-1.5 flex justify-between text-[12.5px]">
+                            <span class="font-semibold text-[#3f3f46]">{{ $r['label'] }}</span>
+                            <span class="font-bold text-[#18181b]">{{ Fmt::money($r['value']) }}</span>
+                        </div>
+                        <div class="h-[7px] overflow-hidden rounded-full bg-[#f4f4f5]">
+                            <div class="h-full rounded-full" style="width:{{ $r['pct'] }}%;background:{{ $r['color'] }}"></div>
+                        </div>
+                    </div>
                 @endforeach
-            </tbody>
-        </table>
-    </div>
-    @endif
+            </div>
+        </div>
 
+        {{-- Column customization --}}
+        <div class="rounded-[16px] border border-[#ececef] bg-white">
+            <button wire:click="$toggle('showColumns')" type="button" class="flex w-full items-center justify-between px-4 py-3.5">
+                <span class="text-[13.5px] font-bold text-[#18181b]">ستون‌های گزارش</span>
+                <span class="text-[12px] text-[#5b5bd6]">{{ $showColumns ? 'بستن' : 'سفارشی‌سازی' }}</span>
+            </button>
+            @if($showColumns)
+                <div class="flex flex-wrap gap-2 border-t border-[#f4f4f5] px-4 py-3.5">
+                    @foreach($matrix['columns'] as $col)
+                        @continue(in_array($col['key'], ['number', 'resident']))
+                        <label class="flex items-center gap-1.5 rounded-full border border-[#ececef] px-2.5 py-1 text-[12px]">
+                            <input type="checkbox" wire:model.live="cols" value="{{ $col['key'] }}" class="h-3.5 w-3.5 rounded text-[#5b5bd6]">
+                            {{ $col['label'] }}
+                        </label>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        {{-- Debt matrix --}}
+        <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
+            <div class="border-b border-[#f4f4f5] px-4 py-3 text-[13.5px] font-bold text-[#18181b]">جدول بدهی واحدها</div>
+            <div class="overflow-x-auto">
+                <table id="debt-matrix" class="w-full border-collapse text-[11px]" style="min-width:max-content">
+                    <thead>
+                        <tr class="bg-[#5b5bd6] text-white">
+                            @foreach($visibleCols as $col)
+                                <th class="whitespace-nowrap border border-[#e4e4ec] px-2.5 py-2 font-bold">{{ $col['label'] }}</th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($matrix['rows'] as $row)
+                            <tr>
+                                @foreach($visibleCols as $col)
+                                    @php
+                                        $key = $col['key'];
+                                        $bg = '#ffffff'; $fg = '#18181b'; $val = '';
+                                        if ($key === 'number') { $val = Fmt::fa($row['number']); }
+                                        elseif ($key === 'resident') { $val = $row['resident']; }
+                                        elseif ($key === 'owner') { $val = $row['owner']; }
+                                        elseif ($key === 'count') { $val = Fmt::fa($row['count']); }
+                                        elseif ($key === 'monthly_charge') { $val = Fmt::money($row['monthly_charge']); }
+                                        elseif ($key === 'past_debt') { $val = Fmt::money($row['past_debt']); $bg = $row['past_debt']>0 ? '#ffedd5' : '#dcfce7'; }
+                                        elseif ($key === 'total_debt') { $val = Fmt::money($row['total_debt']); $bg = $row['total_debt']>0 ? '#fee2e2':'#dcfce7'; $fg = $row['total_debt']>0?'#dc2626':'#16a34a'; }
+                                        elseif ($key === 'notes') { $val = $row['notes']; }
+                                        elseif (str_starts_with($key, 'month_')) {
+                                            $cell = $row['months'][$col['month']];
+                                            $val = Fmt::money($cell['value']); $bg = $stateBg[$cell['state']]; $fg = $stateFg[$cell['state']];
+                                        }
+                                    @endphp
+                                    <td class="whitespace-nowrap border border-[#eee] px-2.5 py-2 text-center font-semibold" style="background:{{ $bg }};color:{{ $fg }}">{{ $val !== '' ? $val : '—' }}</td>
+                                @endforeach
+                            </tr>
+                        @empty
+                            <tr><td colspan="{{ $visibleCols->count() }}" class="px-4 py-8 text-center text-[#a1a1aa]">داده‌ای برای نمایش نیست</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- Export buttons --}}
+        <div class="flex gap-2.5">
+            <a href="{{ route('reports.export.excel', $exportParams) }}"
+               class="flex h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-[12px] border border-[#ececef] bg-white text-[12.5px] font-bold text-[#3f3f46]">
+                <span class="text-[15px]">⬇</span>اکسل
+            </a>
+            <a href="{{ route('reports.export.pdf', $exportParams) }}"
+               class="flex h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-[12px] border border-[#ececef] bg-white text-[12.5px] font-bold text-[#3f3f46]">
+                <span class="text-[15px]">⬇</span>PDF
+            </a>
+            <button type="button" onclick="exportReportImage('#debt-matrix','debt-report.png')"
+                    class="flex h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-[12px] border border-[#ececef] bg-white text-[12.5px] font-bold text-[#3f3f46]">
+                <span class="text-[15px]">⬇</span>تصویر
+            </button>
+        </div>
+    </div>
 </div>

@@ -4,103 +4,110 @@ namespace App\Livewire\Reports;
 
 use App\Models\Building;
 use App\Models\Expense;
+use App\Models\LedgerTransaction;
 use App\Models\Payment;
 use App\Models\Unit;
+use App\Support\DebtMatrix;
 use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Morilog\Jalali\Jalalian;
 
-#[Layout('layouts.app', ['title' => 'گزارش‌ها'])]
+#[Layout('layouts.app')]
 class Index extends Component
 {
     public string $building_id = '';
 
-    public string $year = '';
+    public int $monthsBack = 3;
 
-    public string $month = '';
+    /** @var array<int,string> selected optional column keys */
+    public array $cols = [];
+
+    public bool $showColumns = false;
+
+    public bool $colsInit = false;
 
     public function mount(): void
     {
-        $this->year = (string) Jalalian::now()->getYear();
-        $this->month = str_pad((string) Jalalian::now()->getMonth(), 2, '0', STR_PAD_LEFT);
+        $this->syncDefaultCols();
+    }
+
+    public function updatedMonthsBack(): void
+    {
+        $this->syncDefaultCols(force: true);
+    }
+
+    private function syncDefaultCols(bool $force = false): void
+    {
+        $periods = $this->periodsStub();
+        $available = DebtMatrix::optionalColumnKeys($periods);
+
+        if (! $this->colsInit || $force) {
+            $this->cols = $available;
+            $this->colsInit = true;
+        } else {
+            // keep only still-valid keys after month count changes
+            $this->cols = array_values(array_intersect($this->cols, $available));
+            foreach ($available as $k) {
+                if (str_starts_with($k, 'month_') && ! in_array($k, $this->cols)) {
+                    $this->cols[] = $k;
+                }
+            }
+        }
+    }
+
+    private function periodsStub(): array
+    {
+        $now = Jalalian::now();
+        $jy = (int) $now->getYear();
+        $jm = (int) $now->getMonth();
+        $periods = [];
+        for ($i = 0; $i < $this->monthsBack; $i++) {
+            array_unshift($periods, ['jy' => $jy, 'jm' => $jm]);
+            if (--$jm < 1) {
+                $jm = 12;
+                $jy--;
+            }
+        }
+
+        return $periods;
     }
 
     public function render()
     {
-        $buildings = Building::where('is_active', true)->get();
+        $buildingId = $this->building_id ? (int) $this->building_id : null;
+        $matrix = DebtMatrix::build($buildingId, $this->monthsBack);
 
-        $paymentsQuery = Payment::query()
-            ->when($this->building_id, fn ($q) => $q->where('building_id', $this->building_id));
+        // Yearly summary (current Jalali year) for the report card.
+        [$yStart, $yEnd] = JDate::gregorianYearRange((int) Jalalian::now()->getYear());
+        $yEndIncl = $yEnd->copy()->subDay();
 
-        $expensesQuery = Expense::query()
-            ->when($this->building_id, fn ($q) => $q->where('building_id', $this->building_id));
+        $charged = (int) LedgerTransaction::where('direction', 'debit')->where('type', 'charge')
+            ->whereBetween('transaction_date', [$yStart, $yEndIncl])->sum('amount');
+        $collected = (int) Payment::whereBetween('payment_date', [$yStart, $yEndIncl])->sum('amount');
+        $expenses = (int) Expense::whereBetween('expense_date', [$yStart, $yEndIncl])->sum('amount');
+        $outstanding = (int) Unit::where('is_active', true)->get()->sum(fn ($u) => max($u->balance, 0));
+        $base = max(1, $charged);
 
-        // Selected Jalali month / year, as Gregorian ranges for querying.
-        [$monthStart, $monthEnd] = JDate::gregorianMonthRange((int) $this->year, (int) $this->month);
-        [$yearStart, $yearEnd] = JDate::gregorianYearRange((int) $this->year);
+        $summary = [
+            ['label' => 'کل شارژ صادر شده', 'value' => $charged, 'pct' => 100, 'color' => '#5b5bd6'],
+            ['label' => 'مبلغ وصول شده', 'value' => $collected, 'pct' => min(100, (int) round($collected / $base * 100)), 'color' => '#16a34a'],
+            ['label' => 'مطالبات معوق', 'value' => $outstanding, 'pct' => min(100, (int) round($outstanding / $base * 100)), 'color' => '#dc2626'],
+            ['label' => 'کل هزینه‌ها', 'value' => $expenses, 'pct' => min(100, (int) round($expenses / $base * 100)), 'color' => '#d97706'],
+        ];
 
-        $monthlyPayments = (clone $paymentsQuery)
-            ->whereBetween('payment_date', [$monthStart, $monthEnd->copy()->subDay()])
-            ->sum('amount');
+        $exportParams = [
+            'building' => $this->building_id ?: null,
+            'months' => $this->monthsBack,
+            'cols' => implode(',', $this->cols),
+        ];
 
-        $monthlyExpenses = (clone $expensesQuery)
-            ->whereBetween('expense_date', [$monthStart, $monthEnd->copy()->subDay()])
-            ->sum('amount');
-
-        $yearlyPayments = (clone $paymentsQuery)
-            ->whereBetween('payment_date', [$yearStart, $yearEnd->copy()->subDay()])
-            ->sum('amount');
-
-        $yearlyExpenses = (clone $expensesQuery)
-            ->whereBetween('expense_date', [$yearStart, $yearEnd->copy()->subDay()])
-            ->sum('amount');
-
-        // Monthly chart data — last 12 Jalali months, oldest first.
-        $jYear = (int) Jalalian::now()->getYear();
-        $jMonth = (int) Jalalian::now()->getMonth();
-        $months = [];
-        for ($i = 0; $i < 12; $i++) {
-            array_unshift($months, [$jYear, $jMonth]);
-            if (--$jMonth < 1) {
-                $jMonth = 12;
-                $jYear--;
-            }
-        }
-
-        $monthlyData = collect($months)->map(function ($ym) use ($paymentsQuery, $expensesQuery) {
-            [$jy, $jm] = $ym;
-            [$start, $end] = JDate::gregorianMonthRange($jy, $jm);
-
-            $payments = (clone $paymentsQuery)
-                ->whereBetween('payment_date', [$start, $end->copy()->subDay()])
-                ->sum('amount');
-            $expenses = (clone $expensesQuery)
-                ->whereBetween('expense_date', [$start, $end->copy()->subDay()])
-                ->sum('amount');
-
-            return [
-                'label' => JDate::toPersianDigits(sprintf('%d/%02d', $jy, $jm)),
-                'payments' => $payments,
-                'expenses' => $expenses,
-            ];
-        });
-
-        // Units with highest debt
-        $debtorUnits = Unit::query()
-            ->with(['building', 'activeResidents'])
-            ->when($this->building_id, fn ($q) => $q->where('building_id', $this->building_id))
-            ->where('is_active', true)
-            ->get()
-            ->map(fn ($u) => array_merge($u->toArray(), ['balance' => $u->balance]))
-            ->filter(fn ($u) => $u['balance'] > 0)
-            ->sortByDesc('balance')
-            ->take(10)
-            ->values();
-
-        return view('livewire.reports.index', compact(
-            'buildings', 'monthlyPayments', 'monthlyExpenses',
-            'yearlyPayments', 'yearlyExpenses', 'monthlyData', 'debtorUnits'
-        ));
+        return view('livewire.reports.index', [
+            'buildings' => Building::where('is_active', true)->orderBy('name')->get(),
+            'matrix' => $matrix,
+            'summary' => $summary,
+            'exportParams' => $exportParams,
+            'yearLabel' => JDate::toPersianDigits((string) Jalalian::now()->getYear()),
+        ]);
     }
 }

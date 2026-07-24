@@ -1,119 +1,56 @@
-<div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-        {{-- Logo --}}
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#0f766e] mb-4 shadow-lg">
-                <svg class="w-9 h-9 text-[#d4a017]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-white">
-                <span>Luma</span><span class="text-[#d4a017]">Saray</span>
-            </h1>
-            <p class="text-gray-400 text-sm mt-1">مدیریت هوشمند ساختمان</p>
+<div class="flex min-h-screen flex-col justify-center gap-[22px] px-[30px] py-10">
+    <div class="flex flex-col items-center gap-4">
+        <div class="flex h-[60px] w-[60px] items-center justify-center rounded-[18px] bg-[#5b5bd6] shadow-[0_8px_22px_-6px_rgba(91,91,214,.55)]">
+            <div class="h-[22px] w-[22px] rounded-[5px] border-[3px] border-white"></div>
         </div>
-
-        {{-- Register card --}}
-        <div class="bg-white rounded-2xl shadow-2xl p-8">
-            <h2 class="text-xl font-semibold text-gray-900 mb-2 text-center">ایجاد حساب کاربری</h2>
-            <p class="text-sm text-gray-500 mb-6 text-center">مجموعه خود را ثبت کنید و مدیریت را آغاز کنید</p>
-
-            <form wire:submit="register" class="space-y-5">
-                {{-- Organization name --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">نام مجموعه / شرکت</label>
-                    <input
-                        wire:model="organization_name"
-                        type="text"
-                        placeholder="مثلاً: مدیریت ساختمان مهر"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-transparent transition-all"
-                    />
-                    @error('organization_name')
-                        <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Admin name --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">نام و نام خانوادگی شما</label>
-                    <input
-                        wire:model="name"
-                        type="text"
-                        placeholder="نام مدیر"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-transparent transition-all"
-                    />
-                    @error('name')
-                        <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Mobile --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">شماره موبایل</label>
-                    <input
-                        wire:model="mobile"
-                        type="tel"
-                        placeholder="09121234567"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-transparent transition-all ltr placeholder:text-right"
-                        dir="ltr"
-                        autocomplete="username"
-                    />
-                    @error('mobile')
-                        <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Password --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">رمز عبور</label>
-                    <input
-                        wire:model="password"
-                        type="password"
-                        placeholder="••••••••"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-transparent transition-all"
-                        autocomplete="new-password"
-                    />
-                    @error('password')
-                        <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                {{-- Password confirmation --}}
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">تکرار رمز عبور</label>
-                    <input
-                        wire:model="password_confirmation"
-                        type="password"
-                        placeholder="••••••••"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] focus:border-transparent transition-all"
-                        autocomplete="new-password"
-                    />
-                </div>
-
-                {{-- Submit --}}
-                <button
-                    type="submit"
-                    class="w-full bg-[#0f766e] hover:bg-[#0f5f58] text-white font-semibold py-3 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-                    wire:loading.attr="disabled"
-                    wire:loading.class="opacity-75"
-                >
-                    <span wire:loading.remove>ایجاد حساب</span>
-                    <span wire:loading class="flex items-center gap-2">
-                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                        در حال ایجاد...
-                    </span>
-                </button>
-            </form>
-
-            <div class="mt-6 pt-6 border-t border-gray-100 text-center">
-                <p class="text-sm text-gray-600">
-                    حساب کاربری دارید؟
-                    <a href="{{ route('login') }}" wire:navigate class="text-[#0f766e] font-semibold hover:underline">ورود</a>
-                </p>
-            </div>
+        <div class="text-center">
+            <div class="text-[22px] font-extrabold tracking-tight text-[#18181b]">ایجاد حساب کاربری</div>
+            <div class="mt-[5px] text-[13.5px] text-[#71717a]">مجموعهٔ خود را ثبت کنید</div>
         </div>
+    </div>
+
+    <form wire:submit="register" class="flex flex-col gap-3">
+        <label class="flex flex-col gap-1.5">
+            <span class="text-[13px] font-semibold text-[#3f3f46]">نام مجموعه / شرکت</span>
+            <input wire:model="organization_name" type="text" placeholder="مثلاً: مدیریت ساختمان نگین"
+                   class="h-12 rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-3.5 text-[15px] outline-none focus:border-[#5b5bd6]">
+            @error('organization_name')<span class="text-xs text-[#dc2626]">{{ $message }}</span>@enderror
+        </label>
+        <label class="flex flex-col gap-1.5">
+            <span class="text-[13px] font-semibold text-[#3f3f46]">نام و نام خانوادگی</span>
+            <input wire:model="name" type="text" placeholder="نام مدیر"
+                   class="h-12 rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-3.5 text-[15px] outline-none focus:border-[#5b5bd6]">
+            @error('name')<span class="text-xs text-[#dc2626]">{{ $message }}</span>@enderror
+        </label>
+        <label class="flex flex-col gap-1.5">
+            <span class="text-[13px] font-semibold text-[#3f3f46]">شمارهٔ موبایل</span>
+            <input wire:model="mobile" type="tel" placeholder="09121234567" dir="ltr" autocomplete="username"
+                   class="h-12 rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-3.5 text-right text-[15px] outline-none focus:border-[#5b5bd6]">
+            @error('mobile')<span class="text-xs text-[#dc2626]">{{ $message }}</span>@enderror
+        </label>
+        <div class="flex gap-2.5">
+            <label class="flex flex-1 flex-col gap-1.5">
+                <span class="text-[13px] font-semibold text-[#3f3f46]">رمز عبور</span>
+                <input wire:model="password" type="password" placeholder="••••••••" autocomplete="new-password"
+                       class="h-12 rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-3.5 text-[15px] outline-none focus:border-[#5b5bd6]">
+            </label>
+            <label class="flex flex-1 flex-col gap-1.5">
+                <span class="text-[13px] font-semibold text-[#3f3f46]">تکرار رمز</span>
+                <input wire:model="password_confirmation" type="password" placeholder="••••••••" autocomplete="new-password"
+                       class="h-12 rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-3.5 text-[15px] outline-none focus:border-[#5b5bd6]">
+            </label>
+        </div>
+        @error('password')<span class="-mt-1 text-xs text-[#dc2626]">{{ $message }}</span>@enderror
+
+        <button type="submit" wire:loading.attr="disabled"
+                class="mt-1 flex h-[50px] items-center justify-center rounded-[13px] bg-[#5b5bd6] text-[15.5px] font-bold text-white shadow-[0_10px_22px_-8px_rgba(91,91,214,.6)] disabled:opacity-70">
+            <span wire:loading.remove wire:target="register">ایجاد حساب</span>
+            <span wire:loading wire:target="register">در حال ایجاد…</span>
+        </button>
+    </form>
+
+    <div class="text-center text-[13px] text-[#71717a]">
+        حساب کاربری دارید؟
+        <a href="{{ route('login') }}" wire:navigate class="font-semibold text-[#5b5bd6]">ورود</a>
     </div>
 </div>

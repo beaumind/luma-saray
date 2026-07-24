@@ -1,146 +1,122 @@
-<div class="space-y-6">
+@php use App\Support\Fmt; @endphp
+<div>
+    <x-app-header title="داشبورد" :subtitle="$todayLabel" />
 
-    {{-- Stats Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <x-stat-card
-            title="کل ساختمان‌ها"
-            :value="$buildings->count()"
-            icon="building"
-            color="primary"
-        />
-        <x-stat-card
-            title="کل واحدها"
-            :value="$totalUnits"
-            icon="grid"
-            color="gold"
-        />
-        <x-stat-card
-            title="پرداخت‌های این ماه"
-            :value="number_format($thisMonthPayments) . ' تومان'"
-            icon="banknote"
-            color="green"
-        />
-        <x-stat-card
-            title="هزینه‌های این ماه"
-            :value="number_format($thisMonthExpenses) . ' تومان'"
-            icon="receipt"
-            color="red"
-        />
-    </div>
+    <div class="flex flex-col gap-3.5 px-4 pt-4">
 
-    {{-- Balance overview --}}
-    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-gray-900">وضعیت مالی کلی</h3>
-            <span class="text-xs text-gray-400">مجموع بدهی‌های معوق</span>
-        </div>
-        <div class="flex items-center gap-4">
-            <div class="text-3xl font-bold {{ $totalBalance > 0 ? 'text-red-600' : 'text-green-600' }}">
-                {{ number_format(abs($totalBalance)) }}
-                <span class="text-base font-normal text-gray-500">تومان</span>
-            </div>
-            @if($totalBalance > 0)
-                <span class="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm font-medium">بدهکار</span>
-            @else
-                <span class="px-3 py-1 bg-green-50 text-green-600 rounded-full text-sm font-medium">بستانکار</span>
-            @endif
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {{-- Recent Transactions --}}
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="font-semibold text-gray-900">تراکنش‌های اخیر</h3>
-                <a href="{{ route('payments.index') }}" class="text-sm text-[#0f766e] hover:underline">مشاهده همه</a>
-            </div>
-            <div class="divide-y divide-gray-50">
-                @forelse($recentTransactions as $tx)
-                <div class="px-5 py-3 flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                        {{ $tx->direction === 'credit' ? 'bg-green-50' : 'bg-red-50' }}">
-                        @if($tx->direction === 'credit')
-                            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-                            </svg>
-                        @else
-                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-                            </svg>
-                        @endif
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 truncate">{{ $tx->description }}</p>
-                        <p class="text-xs text-gray-400">{{ $tx->unit->building->name ?? '' }} - {{ $tx->unit->number ?? '' }}</p>
-                    </div>
-                    <div class="text-left">
-                        <p class="text-sm font-semibold {{ $tx->direction === 'credit' ? 'text-green-600' : 'text-red-500' }}">
-                            {{ $tx->direction === 'credit' ? '+' : '-' }}{{ number_format($tx->amount) }}
-                        </p>
-                        <x-jdate :value="$tx->transaction_date" class="text-xs text-gray-400" />
-                    </div>
+        {{-- Balance hero --}}
+        <div class="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-[#5b5bd6] to-[#7c6df2] px-[18px] pb-4 pt-[18px] text-white shadow-[0_16px_30px_-14px_rgba(91,91,214,.6)]">
+            <div class="absolute -left-8 -top-8 h-[120px] w-[120px] rounded-full bg-white/10"></div>
+            <div class="text-[12.5px] font-medium opacity-85">موجودی حساب ساختمان</div>
+            <div class="mt-1.5 text-[29px] font-extrabold tracking-tight">{{ Fmt::money($balance) }} <span class="text-[14px] font-semibold opacity-80">ریال</span></div>
+            <div class="mt-3.5 flex gap-2">
+                <div class="flex-1 rounded-[11px] bg-white/15 px-[11px] py-[9px]">
+                    <div class="text-[11px] opacity-85">مطالبات معوق</div>
+                    <div class="mt-[3px] text-[15px] font-bold">{{ Fmt::money($unpaid) }}</div>
                 </div>
-                @empty
-                <div class="px-5 py-8 text-center text-gray-400 text-sm">تراکنشی ثبت نشده است</div>
-                @endforelse
+                <div class="flex-1 rounded-[11px] bg-white/15 px-[11px] py-[9px]">
+                    <div class="text-[11px] opacity-85">درآمد این ماه</div>
+                    <div class="mt-[3px] text-[15px] font-bold">{{ Fmt::money($monthIncome) }}</div>
+                </div>
             </div>
         </div>
 
-        {{-- Debtor Units --}}
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="font-semibold text-gray-900">واحدهای بدهکار</h3>
-                <a href="{{ route('units.index') }}" class="text-sm text-[#0f766e] hover:underline">مشاهده همه</a>
-            </div>
-            <div class="divide-y divide-gray-50">
-                @forelse($debtorUnits as $unit)
-                <div class="px-5 py-3 flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-600 font-bold text-sm flex-shrink-0">
-                        {{ mb_substr($unit->number, -2) }}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">{{ $unit->number }}</p>
-                        <p class="text-xs text-gray-400">{{ $unit->building->name }}</p>
-                    </div>
-                    <div class="text-left">
-                        <p class="text-sm font-bold text-red-600">{{ number_format($unit->balance) }}</p>
-                        <p class="text-xs text-gray-400">تومان</p>
-                    </div>
+        {{-- Stat grid --}}
+        <div class="grid grid-cols-2 gap-2.5">
+            @php
+                $stats = [
+                    ['label' => 'کل واحدها', 'value' => Fmt::fa($totalUnits), 'sub' => Fmt::fa($occupied).' سکونت', 'subColor' => '#16a34a'],
+                    ['label' => 'ساکنان', 'value' => Fmt::fa($residentsTotal), 'sub' => 'نفر', 'subColor' => '#a1a1aa'],
+                    ['label' => 'واحد بدهکار', 'value' => Fmt::fa($debtorCount), 'sub' => 'نیازمند پیگیری', 'subColor' => '#d97706'],
+                    ['label' => 'وصولی ماه', 'value' => '٪'.Fmt::fa($collectionRate), 'sub' => 'این ماه', 'subColor' => '#16a34a'],
+                ];
+            @endphp
+            @foreach($stats as $s)
+                <div class="rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px]">
+                    <div class="text-[12px] font-medium text-[#71717a]">{{ $s['label'] }}</div>
+                    <div class="mt-1 text-[21px] font-extrabold tracking-tight text-[#18181b]">{{ $s['value'] }}</div>
+                    <div class="mt-0.5 text-[11px] font-semibold" style="color:{{ $s['subColor'] }}">{{ $s['sub'] }}</div>
                 </div>
-                @empty
-                <div class="px-5 py-8 text-center text-gray-400 text-sm">همه واحدها تسویه هستند 🎉</div>
-                @endforelse
-            </div>
-        </div>
-    </div>
-
-    {{-- Buildings overview --}}
-    @if($buildings->count() > 0)
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100">
-            <h3 class="font-semibold text-gray-900">ساختمان‌ها</h3>
-        </div>
-        <div class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            @foreach($buildings as $building)
-            <a href="{{ route('buildings.show', $building) }}" class="block border border-gray-100 rounded-xl p-4 hover:border-[#0f766e] hover:shadow-sm transition-all">
-                <div class="flex items-start justify-between mb-3">
-                    <div class="w-10 h-10 rounded-xl bg-[#0f766e]/10 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-[#0f766e]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                        </svg>
-                    </div>
-                    <span class="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">فعال</span>
-                </div>
-                <h4 class="font-semibold text-gray-900">{{ $building->name }}</h4>
-                <p class="text-xs text-gray-400 mt-0.5 truncate">{{ $building->address }}</p>
-                <div class="mt-3 flex items-center gap-4 text-xs text-gray-500">
-                    <span>{{ $building->units_count }} واحد</span>
-                    <span>{{ $building->floors }} طبقه</span>
-                </div>
-            </a>
             @endforeach
         </div>
-    </div>
-    @endif
 
+        {{-- Income vs expense chart --}}
+        @php $barMax = max(1, collect($bars)->flatMap(fn($b) => [$b['income'], $b['expense']])->max()); @endphp
+        <div class="rounded-[16px] border border-[#ececef] bg-white px-[15px] pb-3 pt-[15px]">
+            <div class="mb-0.5 flex items-center justify-between">
+                <div class="text-[14px] font-bold text-[#18181b]">درآمد و هزینه</div>
+                <div class="flex gap-3 text-[11px] text-[#71717a]">
+                    <span class="flex items-center gap-1"><span class="h-[9px] w-[9px] rounded-[3px] bg-[#5b5bd6]"></span>درآمد</span>
+                    <span class="flex items-center gap-1"><span class="h-[9px] w-[9px] rounded-[3px] bg-[#d4d4d8]"></span>هزینه</span>
+                </div>
+            </div>
+            <div class="flex h-[118px] items-end gap-0.5 border-b border-[#ececef] pt-1">
+                @foreach($bars as $b)
+                    <div class="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
+                        <div class="flex flex-1 items-end gap-[3px]">
+                            <div class="w-[11px] rounded-t-[3px] bg-[#5b5bd6]" style="height:{{ round($b['income'] / $barMax * 88) }}px"></div>
+                            <div class="w-[11px] rounded-t-[3px] bg-[#d4d4d8]" style="height:{{ round($b['expense'] / $barMax * 88) }}px"></div>
+                        </div>
+                        <span class="text-[10px] text-[#a1a1aa]">{{ $b['m'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Balance trend sparkline --}}
+        @php
+            $tmax = max(1, max($trend));
+            $tmin = min(0, min($trend));
+            $span = max(1, $tmax - $tmin);
+            $pts = [];
+            foreach ($trend as $i => $v) {
+                $x = 20 + $i * (280 / 5);
+                $y = 82 - (($v - $tmin) / $span) * 66;
+                $pts[] = number_format($x, 1, '.', '').','.number_format($y, 1, '.', '');
+            }
+            $linePts = implode(' ', $pts);
+            $areaPath = 'M20,90 L'.implode(' L', $pts).' L300,90 Z';
+        @endphp
+        <div class="rounded-[16px] border border-[#ececef] bg-white px-[15px] pb-2.5 pt-[15px]">
+            <div class="mb-1.5 text-[14px] font-bold text-[#18181b]">روند موجودی (۶ ماه)</div>
+            <svg viewBox="0 0 320 96" class="block h-auto w-full">
+                <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b5bd6" stop-opacity=".18"></stop><stop offset="1" stop-color="#5b5bd6" stop-opacity="0"></stop></linearGradient></defs>
+                <path d="{{ $areaPath }}" fill="url(#ga)"></path>
+                <polyline points="{{ $linePts }}" fill="none" stroke="#5b5bd6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
+            </svg>
+        </div>
+
+        {{-- Top debtors --}}
+        <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
+            <div class="border-b border-[#f4f4f5] px-[15px] pb-2.5 pt-[13px] text-[14px] font-bold text-[#18181b]">بیشترین بدهی واحدها</div>
+            @forelse($debtors as $d)
+                <a href="{{ route('units.show', $d['id']) }}" wire:navigate
+                   class="flex w-full items-center gap-[11px] border-b border-[#f7f7f8] px-[15px] py-[11px] text-right">
+                    <div class="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-[#fdeded] text-[13px] font-bold text-[#dc2626]">{{ Fmt::fa($d['no']) }}</div>
+                    <div class="min-w-0 flex-1"><div class="text-[13.5px] font-semibold text-[#18181b]">{{ $d['owner'] }}</div><div class="text-[11.5px] text-[#a1a1aa]">طبقه {{ Fmt::fa($d['floor']) }}</div></div>
+                    <div class="text-left"><div class="text-[13.5px] font-bold text-[#dc2626]">{{ Fmt::money($d['amount']) }}</div><div class="text-[11px] text-[#a1a1aa]">بدهکار</div></div>
+                </a>
+            @empty
+                <div class="px-[15px] py-6 text-center text-[12.5px] text-[#a1a1aa]">همهٔ واحدها تسویه هستند 🎉</div>
+            @endforelse
+        </div>
+
+        {{-- Recent activity --}}
+        <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
+            <div class="flex items-center justify-between border-b border-[#f4f4f5] px-[15px] pb-2.5 pt-[13px]">
+                <div class="text-[14px] font-bold text-[#18181b]">تراکنش‌های اخیر</div>
+                <a href="{{ route('payments.index') }}" wire:navigate class="text-[12px] font-semibold text-[#5b5bd6]">همه</a>
+            </div>
+            @forelse($activity as $a)
+                <div class="flex items-center gap-[11px] border-b border-[#f7f7f8] px-[15px] py-[11px]">
+                    <div class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] text-[15px]" style="background:{{ $a['credit'] ? '#e9f7ef' : '#fdeded' }};color:{{ $a['credit'] ? '#16a34a' : '#dc2626' }}">{{ $a['credit'] ? '↓' : '↑' }}</div>
+                    <div class="min-w-0 flex-1"><div class="truncate text-[13px] font-semibold text-[#18181b]">{{ $a['title'] }}</div><div class="text-[11.5px] text-[#a1a1aa]">{{ $a['date'] }}</div></div>
+                    <div class="text-[13.5px] font-bold" style="color:{{ $a['credit'] ? '#16a34a' : '#dc2626' }}">{{ Fmt::money($a['amount']) }}</div>
+                </div>
+            @empty
+                <div class="px-[15px] py-6 text-center text-[12.5px] text-[#a1a1aa]">تراکنشی ثبت نشده است</div>
+            @endforelse
+        </div>
+
+    </div>
 </div>

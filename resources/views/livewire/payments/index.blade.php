@@ -1,124 +1,59 @@
-<div class="space-y-5">
+@php use App\Support\Fmt; @endphp
+<div>
+    <x-app-header title="پرداخت‌ها" :subtitle="Fmt::fa($payments->total()).' پرداخت'">
+        <x-slot:action>
+            <button wire:click="openCreate" type="button"
+                    class="flex h-[34px] items-center gap-1.5 rounded-[10px] bg-[#5b5bd6] px-[13px] text-[13px] font-bold text-white">
+                <span class="text-[15px] leading-none">＋</span>ثبت
+            </button>
+        </x-slot:action>
+    </x-app-header>
 
-    @if(session('success'))
-        <div class="bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">{{ session('success') }}</div>
-    @endif
-
-    <div class="flex flex-wrap items-center gap-3 justify-between">
-        <div class="flex flex-wrap items-center gap-3">
-            <div class="relative">
-                <input wire:model.live.debounce.300ms="search" type="text" placeholder="شماره واحد..."
-                    class="pr-9 pl-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] w-48"/>
-                <svg class="absolute right-3 top-3 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
+    <div class="px-4 pt-4">
+        @if($payments->count() === 0)
+            <div class="flex flex-col items-center justify-center gap-3.5 px-8 py-[70px] text-center">
+                <div class="flex h-[74px] w-[74px] items-center justify-center rounded-[22px] bg-[#f4f4f5] text-3xl text-[#c4c4cc]">₪</div>
+                <div>
+                    <div class="text-[16px] font-bold text-[#18181b]">هنوز پرداختی ثبت نشده</div>
+                    <div class="mt-1.5 text-[13px] leading-[1.8] text-[#a1a1aa]">اولین پرداخت را ثبت کنید تا در دفتر مالی واحدها اعمال شود</div>
+                </div>
+                <button wire:click="openCreate" type="button" class="h-11 rounded-xl bg-[#5b5bd6] px-5 text-[14px] font-bold text-white">ثبت پرداخت</button>
             </div>
-            <select wire:model.live="building_id_filter"
-                class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-                <option value="">همه ساختمان‌ها</option>
-                @foreach($buildings as $b)
-                    <option value="{{ $b->id }}">{{ $b->name }}</option>
+        @else
+            <div class="flex flex-col gap-[9px]">
+                @foreach($payments as $p)
+                    <div class="flex items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px]">
+                        <div class="flex h-10 w-10 flex-none items-center justify-center rounded-[11px] bg-[#e9f7ef] text-[17px] text-[#16a34a]">↓</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[13.5px] font-bold text-[#18181b]">واحد {{ Fmt::fa($p->unit->number ?? '—') }} · {{ $p->unit->activeResidents->first()->name ?? $p->unit->building->name ?? '' }}</div>
+                            <div class="text-[11.5px] text-[#a1a1aa]"><x-jdate :value="$p->payment_date" />@if($p->tracking_number) · پیگیری {{ Fmt::fa($p->tracking_number) }}@endif</div>
+                        </div>
+                        <div class="text-[14px] font-extrabold text-[#16a34a]">{{ Fmt::money($p->amount) }}</div>
+                    </div>
                 @endforeach
-            </select>
-        </div>
-        <button wire:click="openCreate"
-            class="flex items-center gap-2 bg-[#0f766e] hover:bg-[#0f5f58] text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            ثبت پرداخت
-        </button>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-100">
-                <tr>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">تاریخ</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">واحد</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">ساختمان</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">مبلغ</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">کد پیگیری</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">ثبت توسط</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                @forelse($payments as $payment)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-5 py-3.5 text-gray-500 text-xs">
-                        <x-jdate :value="$payment->payment_date" />
-                    </td>
-                    <td class="px-5 py-3.5">
-                        <a href="{{ route('units.show', $payment->unit) }}" class="text-[#0f766e] hover:underline font-medium">
-                            {{ $payment->unit->number }}
-                        </a>
-                    </td>
-                    <td class="px-5 py-3.5 text-gray-600">{{ $payment->building->name }}</td>
-                    <td class="px-5 py-3.5 font-bold text-green-600">+{{ number_format($payment->amount) }} ت</td>
-                    <td class="px-5 py-3.5 text-gray-500 text-xs ltr">{{ $payment->tracking_number ?? '-' }}</td>
-                    <td class="px-5 py-3.5 text-gray-500 text-xs">{{ $payment->creator->name }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="6" class="px-5 py-12 text-center text-gray-400">هیچ پرداختی ثبت نشده است</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-        <div class="px-5 py-4 border-t border-gray-100">{{ $payments->links() }}</div>
-    </div>
-
-    {{-- Modal --}}
-    @if($showModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" wire:click.outside="$set('showModal', false)">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-900">ثبت پرداخت</h3>
-                <button wire:click="$set('showModal', false)" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
             </div>
-            <form wire:submit="save" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">واحد <span class="text-red-500">*</span></label>
-                    <select wire:model="unit_id"
-                        class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-                        <option value="">انتخاب واحد</option>
-                        @foreach($units as $u)
-                            <option value="{{ $u->id }}">{{ $u->building->name }} - {{ $u->number }}</option>
-                        @endforeach
-                    </select>
-                    @error('unit_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <x-form-input wire:model="amount" label="مبلغ (تومان)" type="number" min="1" required/>
-                    <x-jalali-date-input wire:model="payment_date" label="تاریخ پرداخت" required/>
-                </div>
-                <x-form-input wire:model="tracking_number" label="کد پیگیری" placeholder="اختیاری"/>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">رسید پرداخت</label>
-                    <input wire:model="receipt" type="file" accept="image/*,.pdf"
-                        class="w-full text-sm text-gray-500 file:ml-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#0f766e]/10 file:text-[#0f766e] hover:file:bg-[#0f766e]/20"/>
-                </div>
-
-                <div class="flex gap-3 pt-2">
-                    <button type="submit" class="flex-1 bg-[#0f766e] hover:bg-[#0f5f58] text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
-                        wire:loading.attr="disabled">
-                        <span wire:loading.remove>ثبت پرداخت</span>
-                        <span wire:loading>در حال ذخیره...</span>
-                    </button>
-                    <button type="button" wire:click="$set('showModal', false)"
-                        class="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50">
-                        انصراف
-                    </button>
-                </div>
-            </form>
-        </div>
+            @if($payments->hasPages())<div class="mt-4">{{ $payments->links() }}</div>@endif
+        @endif
     </div>
-    @endif
 
+    {{-- Payment sheet --}}
+    <x-sheet model="showModal" title="ثبت پرداخت">
+        <form wire:submit="save" class="flex flex-col gap-[13px]">
+            <label class="flex flex-col gap-1.5">
+                <span class="text-[12.5px] font-semibold text-[#3f3f46]">واحد</span>
+                <select wire:model="unit_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                    <option value="">انتخاب واحد…</option>
+                    @foreach($units as $u)<option value="{{ $u->id }}">واحد {{ Fmt::fa($u->number) }} — {{ $u->building->name }}</option>@endforeach
+                </select>
+                @error('unit_id')<span class="text-[11.5px] text-[#dc2626]">{{ $message }}</span>@enderror
+            </label>
+            <x-input wire:model="amount" label="مبلغ (ریال)" type="number" />
+            <div class="flex gap-2.5">
+                <div class="flex-1"><x-jalali-date-input wire:model="payment_date" label="تاریخ" /></div>
+                <div class="flex-1"><x-input wire:model="tracking_number" label="شماره پیگیری" /></div>
+            </div>
+            <x-input wire:model="notes" label="توضیحات" />
+            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</button>
+        </form>
+    </x-sheet>
 </div>

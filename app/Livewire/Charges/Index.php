@@ -50,9 +50,16 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function setType(string $type): void
+    {
+        $this->type = $type;
+    }
+
     public function openCreate(): void
     {
+        $keepType = $this->type;
         $this->resetForm();
+        $this->type = $keepType;
         $this->editingId = null;
         $this->showModal = true;
     }

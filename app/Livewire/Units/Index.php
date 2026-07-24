@@ -20,6 +20,9 @@ class Index extends Component
     #[Url]
     public string $building_id = '';
 
+    #[Url]
+    public string $filter = 'all';
+
     public bool $showModal = false;
 
     public ?int $editingId = null;
@@ -47,6 +50,12 @@ class Index extends Component
 
     public function updatingBuildingId(): void
     {
+        $this->resetPage();
+    }
+
+    public function setFilter(string $filter): void
+    {
+        $this->filter = $filter;
         $this->resetPage();
     }
 
@@ -130,12 +139,15 @@ class Index extends Component
     {
         $units = Unit::query()
             ->with(['building', 'activeResidents'])
+            ->where('is_active', true)
             ->when($this->search, fn ($q) => $q->where('number', 'like', "%{$this->search}%"))
             ->when($this->building_id, fn ($q) => $q->where('building_id', $this->building_id))
+            ->when($this->filter === 'occupied', fn ($q) => $q->whereHas('activeResidents'))
+            ->when($this->filter === 'empty', fn ($q) => $q->whereDoesntHave('activeResidents'))
             ->orderBy('building_id')
             ->orderBy('floor')
             ->orderBy('number')
-            ->paginate(15);
+            ->paginate(30);
 
         $buildings = Building::where('is_active', true)->orderBy('name')->get();
 

@@ -1,116 +1,92 @@
-<div class="space-y-5">
+@php use App\Support\Fmt; @endphp
+<div x-data="{ simple: false, confirmLogout: false }">
+    <x-app-header title="تنظیمات" :back="route('dashboard')" />
 
-    @if(session('success'))
-        <div class="bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">{{ session('success') }}</div>
-    @endif
+    <div class="flex flex-col gap-3.5 px-4 pt-4">
 
-    {{-- Tabs --}}
-    <div class="flex gap-2 border-b border-gray-200">
-        <button wire:click="$set('tab', 'categories')"
-            class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors {{ $tab === 'categories' ? 'border-[#0f766e] text-[#0f766e]' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
-            دسته‌بندی هزینه
-        </button>
-        <button wire:click="$set('tab', 'profile')"
-            class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors {{ $tab === 'profile' ? 'border-[#0f766e] text-[#0f766e]' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
-            پروفایل من
-        </button>
-    </div>
-
-    @if($tab === 'categories')
-    <div class="space-y-4">
-        <div class="flex justify-between items-center">
-            <h3 class="font-semibold text-gray-900">دسته‌بندی‌های هزینه</h3>
-            <button wire:click="openCategoryCreate"
-                class="flex items-center gap-2 bg-[#0f766e] hover:bg-[#0f5f58] text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                </svg>
-                دسته‌بندی جدید
+        {{-- Simple mode --}}
+        <div class="flex items-start gap-3 rounded-[16px] border border-[#ececef] bg-white p-[15px]">
+            <div class="flex h-[42px] w-[42px] flex-none items-center justify-center rounded-[12px] bg-[#eef0fb] text-[18px] text-[#5b5bd6]">◐</div>
+            <div class="flex-1">
+                <div class="text-[14px] font-bold text-[#18181b]">حالت ساده</div>
+                <div class="mt-0.5 text-[12px] leading-[1.7] text-[#71717a]">مخصوص ساختمان‌های کوچک. گزارش‌ها و تنظیمات پیشرفته پنهان می‌شوند.</div>
+            </div>
+            <button @click="simple = !simple" type="button" class="relative mt-0.5 h-[27px] w-[46px] flex-none rounded-full transition"
+                    :style="simple ? 'background:#5b5bd6' : 'background:#e4e4e7'">
+                <span class="absolute top-[3px] h-[21px] w-[21px] rounded-full bg-white shadow transition-all" :style="simple ? 'right:3px' : 'left:3px'"></span>
             </button>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                        <th class="px-5 py-3 text-right font-semibold text-gray-600">نام</th>
-                        <th class="px-5 py-3 text-right font-semibold text-gray-600">رنگ</th>
-                        <th class="px-5 py-3 text-right font-semibold text-gray-600">عملیات</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @forelse($categories as $cat)
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-5 py-3.5 font-medium text-gray-900">{{ $cat->name }}</td>
-                        <td class="px-5 py-3.5">
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded-full" style="background-color: {{ $cat->color }}"></div>
-                                <span class="text-xs text-gray-400 ltr">{{ $cat->color }}</span>
-                            </div>
-                        </td>
-                        <td class="px-5 py-3.5">
-                            <div class="flex items-center gap-2">
-                                <button wire:click="openCategoryEdit({{ $cat->id }})" class="text-gray-400 hover:text-[#0f766e] text-xs">ویرایش</button>
-                                <button wire:click="deleteCategory({{ $cat->id }})" wire:confirm="حذف شود؟" class="text-gray-400 hover:text-red-500 text-xs">حذف</button>
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="3" class="px-5 py-8 text-center text-gray-400">هیچ دسته‌بندی تعریف نشده است</td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-    @endif
 
-    @if($tab === 'profile')
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 max-w-md">
-        <div class="flex items-center gap-4 mb-5">
-            <div class="w-14 h-14 rounded-full bg-[#0f766e]/10 flex items-center justify-center text-[#0f766e] font-bold text-xl">
-                {{ mb_substr(auth()->user()->name, 0, 1) }}
+        {{-- Expense categories management --}}
+        <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
+            <div class="flex items-center justify-between border-b border-[#f4f4f5] px-[15px] py-[13px]">
+                <div class="text-[14px] font-bold text-[#18181b]">دسته‌بندی هزینه‌ها</div>
+                <button wire:click="openCategoryCreate" type="button" class="rounded-[9px] bg-[#eef0fb] px-3 py-1.5 text-[12px] font-bold text-[#5b5bd6]">＋ افزودن</button>
             </div>
-            <div>
-                <p class="font-semibold text-gray-900">{{ auth()->user()->name }}</p>
-                <p class="text-gray-400 text-sm">{{ auth()->user()->mobile }}</p>
-            </div>
-        </div>
-        <p class="text-sm text-gray-500">برای تغییر اطلاعات پروفایل با مدیر سیستم تماس بگیرید.</p>
-    </div>
-    @endif
-
-    {{-- Category Modal --}}
-    @if($showCategoryModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm" wire:click.outside="$set('showCategoryModal', false)">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-900">{{ $editingCategoryId ? 'ویرایش دسته‌بندی' : 'دسته‌بندی جدید' }}</h3>
-                <button wire:click="$set('showCategoryModal', false)" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <form wire:submit="saveCategory" class="p-6 space-y-4">
-                <x-form-input wire:model="cat_name" label="نام دسته‌بندی" required/>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">رنگ</label>
-                    <input wire:model="cat_color" type="color"
-                        class="w-full h-10 border border-gray-200 rounded-xl cursor-pointer"/>
+            @forelse($categories as $cat)
+                <div class="flex items-center gap-3 border-b border-[#f7f7f8] px-[15px] py-3">
+                    <span class="h-[18px] w-[18px] flex-none rounded-[6px]" style="background:{{ $cat->color }}"></span>
+                    <span class="flex-1 text-[13.5px] font-semibold text-[#18181b]">{{ $cat->name }}</span>
+                    <button wire:click="openCategoryEdit({{ $cat->id }})" type="button" class="text-[12px] font-semibold text-[#5b5bd6]">ویرایش</button>
+                    <button wire:click="deleteCategory({{ $cat->id }})" wire:confirm="حذف این دسته؟" type="button" class="text-[12px] font-semibold text-[#dc2626]">حذف</button>
                 </div>
-                <div class="flex gap-3 pt-2">
-                    <button type="submit" class="flex-1 bg-[#0f766e] hover:bg-[#0f5f58] text-white py-2.5 rounded-xl text-sm font-medium transition-colors">
-                        ذخیره
-                    </button>
-                    <button type="button" wire:click="$set('showCategoryModal', false)"
-                        class="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50">
-                        انصراف
-                    </button>
-                </div>
-            </form>
+            @empty
+                <div class="px-[15px] py-6 text-center text-[12.5px] text-[#a1a1aa]">دسته‌ای تعریف نشده است</div>
+            @endforelse
+        </div>
+
+        {{-- Quick links --}}
+        <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
+            @php
+                $items = [
+                    ['icon' => '◱', 'label' => 'ساختمان‌ها', 'value' => '', 'route' => 'buildings.index'],
+                    ['icon' => '₪', 'label' => 'قالب‌های شارژ', 'value' => '', 'route' => 'charges.index'],
+                    ['icon' => '¤', 'label' => 'واحد پول', 'value' => 'ریال', 'route' => null],
+                ];
+            @endphp
+            @foreach($items as $item)
+                @if($item['route'])
+                    <a href="{{ route($item['route']) }}" wire:navigate class="flex items-center gap-3 border-b border-[#f7f7f8] px-[15px] py-3.5">
+                @else
+                    <div class="flex items-center gap-3 border-b border-[#f7f7f8] px-[15px] py-3.5">
+                @endif
+                    <div class="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] bg-[#f4f4f5] text-[15px]">{{ $item['icon'] }}</div>
+                    <span class="flex-1 text-[13.5px] font-semibold text-[#18181b]">{{ $item['label'] }}</span>
+                    <span class="text-[12px] text-[#a1a1aa]">{{ $item['value'] }}</span>
+                    <span class="text-[16px] text-[#d4d4d8]">‹</span>
+                @if($item['route'])</a>@else</div>@endif
+            @endforeach
+        </div>
+
+        <button @click="confirmLogout = true" type="button" class="h-[46px] rounded-[13px] border border-[#fadada] bg-white text-[14px] font-bold text-[#dc2626]">خروج از حساب</button>
+    </div>
+
+    {{-- Category sheet --}}
+    <x-sheet model="showCategoryModal" :title="$editingCategoryId ? 'ویرایش دسته' : 'دستهٔ جدید'">
+        <form wire:submit="saveCategory" class="flex flex-col gap-3">
+            <x-input wire:model="cat_name" label="نام دسته" />
+            <label class="flex flex-col gap-1.5">
+                <span class="text-[12.5px] font-semibold text-[#3f3f46]">رنگ</span>
+                <input type="color" wire:model="cat_color" class="h-[46px] w-full rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-2">
+            </label>
+            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره دسته</button>
+        </form>
+    </x-sheet>
+
+    {{-- Logout confirm --}}
+    <div x-show="confirmLogout" x-cloak class="fixed inset-0 z-[80] flex items-center justify-center p-8" style="display:none">
+        <div x-show="confirmLogout" x-transition.opacity @click="confirmLogout = false" class="absolute inset-0 bg-[#0a0a0f]/40"></div>
+        <div x-show="confirmLogout" x-transition class="relative w-full max-w-[360px] rounded-[20px] bg-white p-[22px] text-center shadow-2xl">
+            <div class="mx-auto mb-3.5 flex h-[52px] w-[52px] items-center justify-center rounded-[16px] bg-[#fdeded] text-2xl text-[#dc2626]">!</div>
+            <div class="text-[16px] font-extrabold text-[#18181b]">خروج از حساب کاربری</div>
+            <div class="mt-1.5 text-[13px] leading-[1.8] text-[#71717a]">آیا مطمئن هستید می‌خواهید خارج شوید؟</div>
+            <div class="mt-[18px] flex gap-2.5">
+                <button @click="confirmLogout = false" type="button" class="h-11 flex-1 rounded-[12px] border border-[#ececef] bg-white text-[14px] font-bold text-[#3f3f46]">انصراف</button>
+                <form method="POST" action="{{ route('logout') }}" class="flex-1">
+                    @csrf
+                    <button type="submit" class="h-11 w-full rounded-[12px] bg-[#dc2626] text-[14px] font-bold text-white">خروج</button>
+                </form>
+            </div>
         </div>
     </div>
-    @endif
-
 </div>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ReportExportController;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\Buildings\Index as BuildingsIndex;
@@ -51,6 +52,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/payments', PaymentsIndex::class)->name('payments.index');
 
     Route::get('/reports', ReportsIndex::class)->name('reports.index');
+    Route::get('/reports/export/excel', [ReportExportController::class, 'excel'])->name('reports.export.excel');
+    Route::get('/reports/export/pdf', [ReportExportController::class, 'pdf'])->name('reports.export.pdf');
 
     Route::get('/users', UsersIndex::class)->name('users.index');
 

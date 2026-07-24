@@ -1,174 +1,109 @@
-<div class="space-y-5">
+@php
+    use App\Support\Fmt;
+    $periodLabels = ['monthly' => 'ماهانه', 'quarterly' => 'فصلی', 'yearly' => 'سالانه'];
+    $methods = [
+        ['id' => 'fixed', 'title' => 'مبلغ ثابت', 'desc' => 'هر واحد مبلغ یکسان پرداخت می‌کند'],
+        ['id' => 'per_resident', 'title' => 'به ازای هر نفر', 'desc' => 'بر اساس تعداد ساکنان هر واحد'],
+        ['id' => 'combined', 'title' => 'ترکیبی', 'desc' => 'مبلغ ثابت + مبلغ به ازای هر نفر'],
+    ];
+    $preview = match($type) {
+        'fixed' => 'هر واحد مبلغ ثابت پرداخت می‌کند',
+        'per_resident' => 'مبلغ به ازای هر نفر × تعداد ساکنان هر واحد',
+        default => 'مبلغ ثابت + (مبلغ هر نفر × تعداد نفرات هر واحد)',
+    };
+@endphp
+<div>
+    <x-app-header title="شارژها">
+        <x-slot:action>
+            <button wire:click="openCreate" type="button"
+                    class="flex h-[34px] items-center gap-1.5 rounded-[10px] bg-[#5b5bd6] px-[13px] text-[13px] font-bold text-white">
+                <span class="text-[15px] leading-none">＋</span>شارژ جدید
+            </button>
+        </x-slot:action>
+    </x-app-header>
 
-    @if(session('success'))
-        <div class="bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">{{ session('success') }}</div>
-    @endif
-
-    <div class="flex items-center justify-between">
-        <select wire:model.live="building_id"
-            class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-            <option value="">همه ساختمان‌ها</option>
-            @foreach($buildings as $b)
-                <option value="{{ $b->id }}">{{ $b->name }}</option>
-            @endforeach
-        </select>
-        <button wire:click="openCreate"
-            class="flex items-center gap-2 bg-[#0f766e] hover:bg-[#0f5f58] text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            قالب شارژ جدید
-        </button>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-100">
-                <tr>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">عنوان</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">ساختمان</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">نوع</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">دوره</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">مبلغ ثابت</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">سرانه</th>
-                    <th class="px-5 py-3 text-right font-semibold text-gray-600">عملیات</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                @forelse($templates as $tpl)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-5 py-3.5 font-medium text-gray-900">{{ $tpl->title }}</td>
-                    <td class="px-5 py-3.5 text-gray-600">{{ $tpl->building->name }}</td>
-                    <td class="px-5 py-3.5">
-                        <span class="text-xs bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full">{{ $tpl->getTypeLabel() }}</span>
-                    </td>
-                    <td class="px-5 py-3.5 text-gray-600 text-xs">{{ $tpl->getPeriodLabel() }}</td>
-                    <td class="px-5 py-3.5 text-gray-700">{{ $tpl->fixed_amount > 0 ? number_format($tpl->fixed_amount) . ' ت' : '-' }}</td>
-                    <td class="px-5 py-3.5 text-gray-700">{{ $tpl->per_resident_amount > 0 ? number_format($tpl->per_resident_amount) . ' ت' : '-' }}</td>
-                    <td class="px-5 py-3.5">
-                        <div class="flex items-center gap-2">
-                            <button wire:click="openApply({{ $tpl->id }})"
-                                class="text-xs bg-[#0f766e] text-white px-2.5 py-1 rounded-lg hover:bg-[#0f5f58] transition-colors">
-                                اعمال
-                            </button>
-                            <button wire:click="openEdit({{ $tpl->id }})" class="text-gray-400 hover:text-[#0f766e] text-xs">ویرایش</button>
-                            <button wire:click="delete({{ $tpl->id }})" wire:confirm="آیا از حذف مطمئن هستید؟" class="text-gray-400 hover:text-red-500 text-xs">حذف</button>
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="7" class="px-5 py-12 text-center text-gray-400">هیچ قالب شارژی تعریف نشده است</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-        <div class="px-5 py-4 border-t border-gray-100">{{ $templates->links() }}</div>
-    </div>
-
-    {{-- Create/Edit Modal --}}
-    @if($showModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" wire:click.outside="$set('showModal', false)">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-900">{{ $editingId ? 'ویرایش قالب شارژ' : 'قالب شارژ جدید' }}</h3>
-                <button wire:click="$set('showModal', false)" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+    <div class="flex flex-col gap-3.5 px-4 pt-4">
+        {{-- Method selector --}}
+        <div class="rounded-[16px] border border-[#ececef] bg-white p-[15px]">
+            <div class="mb-[11px] text-[13.5px] font-bold text-[#18181b]">روش محاسبهٔ شارژ</div>
+            <div class="flex flex-col gap-[9px]">
+                @foreach($methods as $m)
+                    @php $on = $type === $m['id']; @endphp
+                    <button wire:click="setType('{{ $m['id'] }}')" type="button"
+                            class="flex items-start gap-[11px] rounded-[13px] border-[1.5px] px-[13px] py-3 text-right"
+                            style="border-color:{{ $on ? '#5b5bd6' : '#ececef' }};background:{{ $on ? '#f6f6fd' : '#fff' }}">
+                        <span class="mt-0.5 flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full border-2" style="border-color:{{ $on ? '#5b5bd6' : '#d4d4d8' }}">
+                            <span class="h-2 w-2 rounded-full" style="background:{{ $on ? '#5b5bd6' : 'transparent' }}"></span>
+                        </span>
+                        <span class="flex-1"><span class="block text-[13.5px] font-bold text-[#18181b]">{{ $m['title'] }}</span><span class="mt-[3px] block text-[12px] text-[#71717a]">{{ $m['desc'] }}</span></span>
+                    </button>
+                @endforeach
             </div>
-            <form wire:submit="save" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">ساختمان <span class="text-red-500">*</span></label>
-                    <select wire:model="tpl_building_id"
-                        class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-                        <option value="">انتخاب ساختمان</option>
-                        @foreach($buildings as $b)
-                            <option value="{{ $b->id }}">{{ $b->name }}</option>
-                        @endforeach
+            <div class="mt-3 rounded-[11px] bg-[#f7f7f8] px-[13px] py-3">
+                <div class="mb-1 text-[11.5px] text-[#71717a]">پیش‌نمایش محاسبه</div>
+                <div class="text-[13px] font-semibold leading-[1.9] text-[#18181b]">{{ $preview }}</div>
+            </div>
+        </div>
+
+        {{-- Charge templates --}}
+        <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
+            <div class="border-b border-[#f4f4f5] px-[15px] py-[13px] text-[14px] font-bold text-[#18181b]">دوره‌های شارژ</div>
+            @forelse($templates as $c)
+                @php
+                    $amt = $c->type === 'per_resident' ? Fmt::money($c->per_resident_amount).' / نفر' : Fmt::money($c->fixed_amount);
+                @endphp
+                <button wire:click="openApply({{ $c->id }})" type="button" class="flex w-full items-center gap-[11px] border-b border-[#f7f7f8] px-[15px] py-3 text-right">
+                    <div class="min-w-0 flex-1"><div class="truncate text-[13.5px] font-semibold text-[#18181b]">{{ $c->title }}</div><div class="text-[11.5px] text-[#a1a1aa]">{{ $c->building->name }} · {{ $periodLabels[$c->period] ?? $c->period }}</div></div>
+                    <div class="text-left"><div class="text-[13.5px] font-bold text-[#18181b]">{{ $amt }}</div><span class="rounded-full px-2 py-[2px] text-[10.5px] font-bold" style="background:{{ $c->is_active ? '#e9f7ef' : '#f4f4f5' }};color:{{ $c->is_active ? '#16a34a' : '#a1a1aa' }}">{{ $c->is_active ? 'فعال' : 'غیرفعال' }}</span></div>
+                </button>
+            @empty
+                <div class="px-[15px] py-8 text-center text-[13px] text-[#a1a1aa]">قالب شارژی تعریف نشده است</div>
+            @endforelse
+        </div>
+
+        @if($templates->hasPages())<div>{{ $templates->links() }}</div>@endif
+    </div>
+
+    {{-- Create template sheet --}}
+    <x-sheet model="showModal" :title="$editingId ? 'ویرایش قالب شارژ' : 'قالب شارژ جدید'">
+        <form wire:submit="save" class="flex flex-col gap-3">
+            <label class="flex flex-col gap-1.5">
+                <span class="text-[12.5px] font-semibold text-[#3f3f46]">ساختمان</span>
+                <select wire:model="tpl_building_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                    <option value="">انتخاب ساختمان…</option>
+                    @foreach($buildings as $b)<option value="{{ $b->id }}">{{ $b->name }}</option>@endforeach
+                </select>
+                @error('tpl_building_id')<span class="text-[11.5px] text-[#dc2626]">{{ $message }}</span>@enderror
+            </label>
+            <x-input wire:model="title" label="عنوان" />
+            <div class="flex gap-2.5">
+                <label class="flex flex-1 flex-col gap-1.5">
+                    <span class="text-[12.5px] font-semibold text-[#3f3f46]">روش</span>
+                    <select wire:model="type" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                        <option value="fixed">ثابت</option><option value="per_resident">هر نفر</option><option value="combined">ترکیبی</option>
                     </select>
-                    @error('tpl_building_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <x-form-input wire:model="title" label="عنوان شارژ" placeholder="شارژ ماهانه" required/>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">نوع شارژ</label>
-                        <select wire:model.live="type"
-                            class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-                            <option value="fixed">ثابت</option>
-                            <option value="per_resident">به ازای هر نفر</option>
-                            <option value="combined">ترکیبی</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">دوره</label>
-                        <select wire:model="period"
-                            class="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-                            <option value="monthly">ماهانه</option>
-                            <option value="quarterly">فصلی</option>
-                            <option value="yearly">سالانه</option>
-                        </select>
-                    </div>
-                </div>
-
-                @if(in_array($type, ['fixed', 'combined']))
-                    <x-form-input wire:model="fixed_amount" label="مبلغ ثابت (تومان)" type="number" min="0"/>
-                @endif
-                @if(in_array($type, ['per_resident', 'combined']))
-                    <x-form-input wire:model="per_resident_amount" label="مبلغ سرانه هر نفر (تومان)" type="number" min="0"/>
-                @endif
-
-                <div class="flex gap-3 pt-2">
-                    <button type="submit" class="flex-1 bg-[#0f766e] hover:bg-[#0f5f58] text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
-                        wire:loading.attr="disabled">
-                        <span wire:loading.remove>{{ $editingId ? 'بروزرسانی' : 'ثبت' }}</span>
-                        <span wire:loading>در حال ذخیره...</span>
-                    </button>
-                    <button type="button" wire:click="$set('showModal', false)"
-                        class="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50">
-                        انصراف
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    @endif
-
-    {{-- Apply Modal --}}
-    @if($showApplyModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm" wire:click.outside="$set('showApplyModal', false)">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-900">اعمال شارژ</h3>
-                <button wire:click="$set('showApplyModal', false)" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+                </label>
+                <label class="flex flex-1 flex-col gap-1.5">
+                    <span class="text-[12.5px] font-semibold text-[#3f3f46]">دوره</span>
+                    <select wire:model="period" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                        <option value="monthly">ماهانه</option><option value="quarterly">فصلی</option><option value="yearly">سالانه</option>
+                    </select>
+                </label>
             </div>
-            <form wire:submit="applyCharge" class="p-6 space-y-4">
-                <x-form-input wire:model="apply_period" label="دوره (مثال: ۱۴۰۳/۰۵)" placeholder="1403/05" required/>
-                <x-jalali-date-input wire:model="apply_date" label="تاریخ ثبت" required/>
-                <p class="text-xs text-amber-600 bg-amber-50 rounded-xl p-3">
-                    این شارژ برای تمام واحدهای فعال ساختمان ثبت خواهد شد.
-                </p>
-                <div class="flex gap-3">
-                    <button type="submit" class="flex-1 bg-[#0f766e] hover:bg-[#0f5f58] text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
-                        wire:loading.attr="disabled">
-                        <span wire:loading.remove>اعمال شارژ</span>
-                        <span wire:loading>در حال اعمال...</span>
-                    </button>
-                    <button type="button" wire:click="$set('showApplyModal', false)"
-                        class="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50">
-                        انصراف
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    @endif
+            <div class="flex gap-2.5">
+                <div class="flex-1"><x-input wire:model="fixed_amount" label="مبلغ ثابت" type="number" /></div>
+                <div class="flex-1"><x-input wire:model="per_resident_amount" label="مبلغ هر نفر" type="number" /></div>
+            </div>
+            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره قالب</button>
+        </form>
+    </x-sheet>
 
+    {{-- Apply charge sheet --}}
+    <x-sheet model="showApplyModal" title="اعمال شارژ">
+        <form wire:submit="applyCharge" class="flex flex-col gap-3">
+            <x-input wire:model="apply_period" label="دوره (مثال: ۱۴۰۳/۰۵)" />
+            <x-jalali-date-input wire:model="apply_date" label="تاریخ ثبت" />
+            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">اعمال بر همهٔ واحدها</button>
+        </form>
+    </x-sheet>
 </div>

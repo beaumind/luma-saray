@@ -76,15 +76,32 @@ class Show extends Component
 
     public function render()
     {
-        $transactions = LedgerTransaction::where('unit_id', $this->unit->id)
-            ->with('creator')
-            ->orderByDesc('transaction_date')
-            ->orderByDesc('id')
-            ->paginate(20);
+        // Load full ledger ascending to build a running balance, then show newest first.
+        $asc = LedgerTransaction::where('unit_id', $this->unit->id)
+            ->orderBy('transaction_date')->orderBy('id')
+            ->get();
 
-        $balance = $this->unit->balance;
+        $run = 0;
+        $ledger = [];
+        foreach ($asc as $t) {
+            $run += $t->direction === 'debit' ? $t->amount : -$t->amount;
+            $ledger[] = [
+                'title' => $t->description ?: ($t->type === 'payment' ? 'پرداخت' : ($t->type === 'expense' ? 'هزینه' : 'شارژ')),
+                'date' => JDate::toJalali($t->transaction_date),
+                'credit' => $t->direction === 'credit',
+                'type' => $t->type,
+                'amount' => $t->amount,
+                'run' => $run,
+            ];
+        }
+        $ledger = array_reverse($ledger);
 
-        return view('livewire.units.show', compact('transactions', 'balance'))
-            ->title($this->unit->number.' - '.$this->unit->building->name);
+        $residents = $this->unit->activeResidents()->get();
+
+        return view('livewire.units.show', [
+            'ledger' => $ledger,
+            'balance' => $this->unit->balance,
+            'residents' => $residents,
+        ])->title('واحد '.$this->unit->number);
     }
 }
