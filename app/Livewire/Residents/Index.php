@@ -5,6 +5,8 @@ namespace App\Livewire\Residents;
 use App\Models\Building;
 use App\Models\Resident;
 use App\Models\Unit;
+use App\Rules\JalaliDate;
+use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -65,7 +67,7 @@ class Index extends Component
     {
         $this->resetForm();
         $this->editingId = null;
-        $this->move_in_date = now()->format('Y-m-d');
+        $this->move_in_date = JDate::today();
         $this->showModal = true;
     }
 
@@ -79,8 +81,8 @@ class Index extends Component
         $this->mobile = $resident->mobile ?? '';
         $this->national_code = $resident->national_code ?? '';
         $this->resident_count = (string) $resident->resident_count;
-        $this->move_in_date = $resident->move_in_date?->format('Y-m-d') ?? '';
-        $this->move_out_date = $resident->move_out_date?->format('Y-m-d') ?? '';
+        $this->move_in_date = JDate::toJalali($resident->move_in_date);
+        $this->move_out_date = JDate::toJalali($resident->move_out_date);
         $this->notes = $resident->notes ?? '';
         $this->showModal = true;
     }
@@ -94,9 +96,18 @@ class Index extends Component
             'mobile' => 'nullable|string|max:20',
             'national_code' => 'nullable|string|max:10',
             'resident_count' => 'required|integer|min:1|max:20',
-            'move_in_date' => 'nullable|date',
-            'move_out_date' => 'nullable|date|after:move_in_date',
+            'move_in_date' => ['nullable', new JalaliDate],
+            'move_out_date' => ['nullable', new JalaliDate],
         ]);
+
+        $moveIn = JDate::toGregorian($this->move_in_date);
+        $moveOut = JDate::toGregorian($this->move_out_date);
+
+        if ($moveIn && $moveOut && $moveOut <= $moveIn) {
+            $this->addError('move_out_date', 'تاریخ خروج باید بعد از تاریخ ورود باشد.');
+
+            return;
+        }
 
         $data = [
             'unit_id' => (int) $this->unit_id,
@@ -105,8 +116,8 @@ class Index extends Component
             'mobile' => $this->mobile ?: null,
             'national_code' => $this->national_code ?: null,
             'resident_count' => (int) $this->resident_count,
-            'move_in_date' => $this->move_in_date ?: null,
-            'move_out_date' => $this->move_out_date ?: null,
+            'move_in_date' => $moveIn,
+            'move_out_date' => $moveOut,
             'notes' => $this->notes ?: null,
         ];
 

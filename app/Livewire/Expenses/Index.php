@@ -6,7 +6,9 @@ use App\Models\Building;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Unit;
+use App\Rules\JalaliDate;
 use App\Services\ExpenseService;
+use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -56,7 +58,7 @@ class Index extends Component
     public function openCreate(): void
     {
         $this->resetForm();
-        $this->expense_date = now()->format('Y-m-d');
+        $this->expense_date = JDate::today();
         $this->showModal = true;
     }
 
@@ -66,7 +68,7 @@ class Index extends Component
             'building_id' => 'required|exists:buildings,id',
             'title' => 'required|string|max:200',
             'amount' => 'required|integer|min:1',
-            'expense_date' => 'required|date',
+            'expense_date' => ['required', new JalaliDate],
             'distribution' => 'required|in:all_units,selected_units',
             'responsible' => 'required|in:owner,tenant,both',
             'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
@@ -81,7 +83,7 @@ class Index extends Component
             'expense_category_id' => $this->expense_category_id ?: null,
             'title' => $this->title,
             'amount' => (int) $this->amount,
-            'expense_date' => $this->expense_date,
+            'expense_date' => JDate::toGregorian($this->expense_date),
             'description' => $this->description ?: null,
             'distribution' => $this->distribution,
             'responsible' => $this->responsible,

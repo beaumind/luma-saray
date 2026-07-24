@@ -135,7 +135,7 @@
                 @endisset
             </div>
 
-            <span class="text-sm text-gray-500 hidden sm:block">{{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d') }}</span>
+            <x-jdate :value="now()" class="text-sm text-gray-500 hidden sm:block" />
         </header>
 
         {{-- Page content --}}

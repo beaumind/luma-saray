@@ -6,6 +6,7 @@ use App\Models\Building;
 use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\Unit;
+use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Morilog\Jalali\Jalalian;
@@ -21,8 +22,8 @@ class Index extends Component
 
     public function mount(): void
     {
-        $this->year = now()->format('Y');
-        $this->month = now()->format('m');
+        $this->year = (string) Jalalian::now()->getYear();
+        $this->month = str_pad((string) Jalalian::now()->getMonth(), 2, '0', STR_PAD_LEFT);
     }
 
     public function render()
@@ -35,38 +36,51 @@ class Index extends Component
         $expensesQuery = Expense::query()
             ->when($this->building_id, fn ($q) => $q->where('building_id', $this->building_id));
 
+        // Selected Jalali month / year, as Gregorian ranges for querying.
+        [$monthStart, $monthEnd] = JDate::gregorianMonthRange((int) $this->year, (int) $this->month);
+        [$yearStart, $yearEnd] = JDate::gregorianYearRange((int) $this->year);
+
         $monthlyPayments = (clone $paymentsQuery)
-            ->whereYear('payment_date', $this->year)
-            ->whereMonth('payment_date', $this->month)
+            ->whereBetween('payment_date', [$monthStart, $monthEnd->copy()->subDay()])
             ->sum('amount');
 
         $monthlyExpenses = (clone $expensesQuery)
-            ->whereYear('expense_date', $this->year)
-            ->whereMonth('expense_date', $this->month)
+            ->whereBetween('expense_date', [$monthStart, $monthEnd->copy()->subDay()])
             ->sum('amount');
 
         $yearlyPayments = (clone $paymentsQuery)
-            ->whereYear('payment_date', $this->year)
+            ->whereBetween('payment_date', [$yearStart, $yearEnd->copy()->subDay()])
             ->sum('amount');
 
         $yearlyExpenses = (clone $expensesQuery)
-            ->whereYear('expense_date', $this->year)
+            ->whereBetween('expense_date', [$yearStart, $yearEnd->copy()->subDay()])
             ->sum('amount');
 
-        // Monthly chart data (last 12 months)
-        $monthlyData = collect(range(11, 0))->map(function ($monthsAgo) use ($paymentsQuery, $expensesQuery) {
-            $date = now()->subMonths($monthsAgo);
+        // Monthly chart data — last 12 Jalali months, oldest first.
+        $jYear = (int) Jalalian::now()->getYear();
+        $jMonth = (int) Jalalian::now()->getMonth();
+        $months = [];
+        for ($i = 0; $i < 12; $i++) {
+            array_unshift($months, [$jYear, $jMonth]);
+            if (--$jMonth < 1) {
+                $jMonth = 12;
+                $jYear--;
+            }
+        }
+
+        $monthlyData = collect($months)->map(function ($ym) use ($paymentsQuery, $expensesQuery) {
+            [$jy, $jm] = $ym;
+            [$start, $end] = JDate::gregorianMonthRange($jy, $jm);
+
             $payments = (clone $paymentsQuery)
-                ->whereYear('payment_date', $date->year)
-                ->whereMonth('payment_date', $date->month)
+                ->whereBetween('payment_date', [$start, $end->copy()->subDay()])
                 ->sum('amount');
             $expenses = (clone $expensesQuery)
-                ->whereYear('expense_date', $date->year)
-                ->whereMonth('expense_date', $date->month)
+                ->whereBetween('expense_date', [$start, $end->copy()->subDay()])
                 ->sum('amount');
 
             return [
-                'label' => Jalalian::fromCarbon($date)->format('Y/m'),
+                'label' => JDate::toPersianDigits(sprintf('%d/%02d', $jy, $jm)),
                 'payments' => $payments,
                 'expenses' => $expenses,
             ];

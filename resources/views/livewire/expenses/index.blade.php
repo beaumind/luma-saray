@@ -46,7 +46,7 @@
                 @forelse($expenses as $expense)
                 <tr class="hover:bg-gray-50">
                     <td class="px-5 py-3.5 text-gray-500 text-xs">
-                        {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($expense->expense_date))->format('Y/m/d') }}
+                        <x-jdate :value="$expense->expense_date" />
                     </td>
                     <td class="px-5 py-3.5 font-medium text-gray-900">{{ $expense->title }}</td>
                     <td class="px-5 py-3.5 text-gray-600">{{ $expense->building->name }}</td>
@@ -115,7 +115,7 @@
                 <x-form-input wire:model="title" label="عنوان هزینه" required/>
                 <div class="grid grid-cols-2 gap-4">
                     <x-form-input wire:model="amount" label="مبلغ (تومان)" type="number" min="1" required/>
-                    <x-form-input wire:model="expense_date" label="تاریخ" type="date" required/>
+                    <x-jalali-date-input wire:model="expense_date" label="تاریخ" required/>
                 </div>
 
                 <div>

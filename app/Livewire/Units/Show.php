@@ -4,7 +4,9 @@ namespace App\Livewire\Units;
 
 use App\Models\LedgerTransaction;
 use App\Models\Unit;
+use App\Rules\JalaliDate;
 use App\Services\PaymentService;
+use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -32,13 +34,13 @@ class Show extends Component
     public function mount(Unit $unit): void
     {
         $this->unit = $unit->load(['building', 'activeResidents']);
-        $this->pay_date = now()->format('Y-m-d');
+        $this->pay_date = JDate::today();
     }
 
     public function openPayment(): void
     {
         $this->pay_amount = '';
-        $this->pay_date = now()->format('Y-m-d');
+        $this->pay_date = JDate::today();
         $this->pay_tracking = '';
         $this->pay_notes = '';
         $this->receipt = null;
@@ -49,7 +51,7 @@ class Show extends Component
     {
         $this->validate([
             'pay_amount' => 'required|integer|min:1',
-            'pay_date' => 'required|date',
+            'pay_date' => ['required', new JalaliDate],
             'pay_tracking' => 'nullable|string|max:100',
             'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
@@ -61,7 +63,7 @@ class Show extends Component
 
         $service->register($this->unit, [
             'amount' => (int) $this->pay_amount,
-            'payment_date' => $this->pay_date,
+            'payment_date' => JDate::toGregorian($this->pay_date),
             'tracking_number' => $this->pay_tracking ?: null,
             'notes' => $this->pay_notes ?: null,
             'receipt_path' => $receiptPath,

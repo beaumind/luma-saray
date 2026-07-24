@@ -151,7 +151,7 @@
             </div>
             <form wire:submit="applyCharge" class="p-6 space-y-4">
                 <x-form-input wire:model="apply_period" label="دوره (مثال: ۱۴۰۳/۰۵)" placeholder="1403/05" required/>
-                <x-form-input wire:model="apply_date" label="تاریخ ثبت" type="date" required/>
+                <x-jalali-date-input wire:model="apply_date" label="تاریخ ثبت" required/>
                 <p class="text-xs text-amber-600 bg-amber-50 rounded-xl p-3">
                     این شارژ برای تمام واحدهای فعال ساختمان ثبت خواهد شد.
                 </p>

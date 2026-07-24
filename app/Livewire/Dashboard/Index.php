@@ -7,8 +7,10 @@ use App\Models\Expense;
 use App\Models\LedgerTransaction;
 use App\Models\Payment;
 use App\Models\Unit;
+use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Morilog\Jalali\Jalalian;
 
 #[Layout('layouts.app', ['title' => 'داشبورد'])]
 class Index extends Component
@@ -22,12 +24,16 @@ class Index extends Component
         $totalCredits = LedgerTransaction::where('direction', 'credit')->sum('amount');
         $totalBalance = $totalDebits - $totalCredits; // positive = owed to building
 
-        $thisMonthPayments = Payment::whereMonth('payment_date', now()->month)
-            ->whereYear('payment_date', now()->year)
+        // "This month" means the current Jalali month.
+        [$monthStart, $monthEnd] = JDate::gregorianMonthRange(
+            (int) Jalalian::now()->getYear(),
+            (int) Jalalian::now()->getMonth()
+        );
+
+        $thisMonthPayments = Payment::whereBetween('payment_date', [$monthStart, $monthEnd->copy()->subDay()])
             ->sum('amount');
 
-        $thisMonthExpenses = Expense::whereMonth('expense_date', now()->month)
-            ->whereYear('expense_date', now()->year)
+        $thisMonthExpenses = Expense::whereBetween('expense_date', [$monthStart, $monthEnd->copy()->subDay()])
             ->sum('amount');
 
         $recentTransactions = LedgerTransaction::with(['unit.building', 'creator'])

@@ -77,7 +77,7 @@
                         <p class="text-sm font-semibold {{ $tx->direction === 'credit' ? 'text-green-600' : 'text-red-500' }}">
                             {{ $tx->direction === 'credit' ? '+' : '-' }}{{ number_format($tx->amount) }}
                         </p>
-                        <p class="text-xs text-gray-400">{{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($tx->transaction_date))->format('Y/m/d') }}</p>
+                        <x-jdate :value="$tx->transaction_date" class="text-xs text-gray-400" />
                     </div>
                 </div>
                 @empty

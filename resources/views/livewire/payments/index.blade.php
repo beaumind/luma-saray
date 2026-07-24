@@ -46,7 +46,7 @@
                 @forelse($payments as $payment)
                 <tr class="hover:bg-gray-50">
                     <td class="px-5 py-3.5 text-gray-500 text-xs">
-                        {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($payment->payment_date))->format('Y/m/d') }}
+                        <x-jdate :value="$payment->payment_date" />
                     </td>
                     <td class="px-5 py-3.5">
                         <a href="{{ route('units.show', $payment->unit) }}" class="text-[#0f766e] hover:underline font-medium">
@@ -95,7 +95,7 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <x-form-input wire:model="amount" label="مبلغ (تومان)" type="number" min="1" required/>
-                    <x-form-input wire:model="payment_date" label="تاریخ پرداخت" type="date" required/>
+                    <x-jalali-date-input wire:model="payment_date" label="تاریخ پرداخت" required/>
                 </div>
                 <x-form-input wire:model="tracking_number" label="کد پیگیری" placeholder="اختیاری"/>
 

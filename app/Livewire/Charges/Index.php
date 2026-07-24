@@ -4,10 +4,13 @@ namespace App\Livewire\Charges;
 
 use App\Models\Building;
 use App\Models\ChargeTemplate;
+use App\Rules\JalaliDate;
 use App\Services\ChargeService;
+use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Morilog\Jalali\Jalalian;
 
 #[Layout('layouts.app', ['title' => 'شارژها'])]
 class Index extends Component
@@ -71,20 +74,20 @@ class Index extends Component
     public function openApply(int $id): void
     {
         $this->applyTemplateId = $id;
-        $this->apply_date = now()->format('Y-m-d');
-        $this->apply_period = now()->format('Y/m');
+        $this->apply_date = JDate::today();
+        $this->apply_period = JDate::toPersianDigits(Jalalian::now()->format('Y/m'));
         $this->showApplyModal = true;
     }
 
     public function applyCharge(ChargeService $service): void
     {
         $this->validate([
-            'apply_date' => 'required|date',
+            'apply_date' => ['required', new JalaliDate],
             'apply_period' => 'required|string|max:20',
         ]);
 
         $template = ChargeTemplate::findOrFail($this->applyTemplateId);
-        $count = $service->applyChargeToBuilding($template, $this->apply_period, $this->apply_date);
+        $count = $service->applyChargeToBuilding($template, $this->apply_period, JDate::toGregorian($this->apply_date));
 
         $this->showApplyModal = false;
         session()->flash('success', "شارژ برای {$count} واحد اعمال شد.");

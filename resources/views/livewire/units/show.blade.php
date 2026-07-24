@@ -93,7 +93,7 @@
                 @forelse($transactions as $tx)
                 <tr>
                     <td class="px-5 py-3 text-gray-500 text-xs">
-                        {{ \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($tx->transaction_date))->format('Y/m/d') }}
+                        <x-jdate :value="$tx->transaction_date" />
                     </td>
                     <td class="px-5 py-3">
                         <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium
@@ -130,7 +130,7 @@
             </div>
             <form wire:submit="savePayment" class="p-6 space-y-4">
                 <x-form-input wire:model="pay_amount" label="مبلغ (تومان)" type="number" min="1" required/>
-                <x-form-input wire:model="pay_date" label="تاریخ پرداخت" type="date" required/>
+                <x-jalali-date-input wire:model="pay_date" label="تاریخ پرداخت" required/>
                 <x-form-input wire:model="pay_tracking" label="کد پیگیری" placeholder="اختیاری"/>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">رسید پرداخت</label>

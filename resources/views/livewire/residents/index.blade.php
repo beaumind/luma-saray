@@ -136,8 +136,8 @@
                     <x-form-input wire:model="mobile" label="موبایل" type="tel" placeholder="09121234567"/>
                     <x-form-input wire:model="national_code" label="کد ملی"/>
                     <x-form-input wire:model="resident_count" label="تعداد نفر" type="number" min="1" required/>
-                    <x-form-input wire:model="move_in_date" label="تاریخ ورود" type="date"/>
-                    <x-form-input wire:model="move_out_date" label="تاریخ خروج" type="date"/>
+                    <x-jalali-date-input wire:model="move_in_date" label="تاریخ ورود"/>
+                    <x-jalali-date-input wire:model="move_out_date" label="تاریخ خروج"/>
                 </div>
 
                 <div class="flex gap-3 pt-2">

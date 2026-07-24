@@ -5,7 +5,9 @@ namespace App\Livewire\Payments;
 use App\Models\Building;
 use App\Models\Payment;
 use App\Models\Unit;
+use App\Rules\JalaliDate;
 use App\Services\PaymentService;
+use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -42,7 +44,7 @@ class Index extends Component
     public function openCreate(): void
     {
         $this->resetForm();
-        $this->payment_date = now()->format('Y-m-d');
+        $this->payment_date = JDate::today();
         $this->showModal = true;
     }
 
@@ -51,7 +53,7 @@ class Index extends Component
         $this->validate([
             'unit_id' => 'required|exists:units,id',
             'amount' => 'required|integer|min:1',
-            'payment_date' => 'required|date',
+            'payment_date' => ['required', new JalaliDate],
             'tracking_number' => 'nullable|string|max:100',
             'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
@@ -64,7 +66,7 @@ class Index extends Component
         $unit = Unit::findOrFail((int) $this->unit_id);
         $service->register($unit, [
             'amount' => (int) $this->amount,
-            'payment_date' => $this->payment_date,
+            'payment_date' => JDate::toGregorian($this->payment_date),
             'tracking_number' => $this->tracking_number ?: null,
             'notes' => $this->notes ?: null,
             'receipt_path' => $receiptPath,

@@ -9,17 +9,19 @@
                 <option value="{{ $b->id }}">{{ $b->name }}</option>
             @endforeach
         </select>
+        @php $jNow = \Morilog\Jalali\Jalalian::now()->getYear(); @endphp
         <select wire:model.live="year"
             class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-            @for($y = now()->year; $y >= now()->year - 3; $y--)
-                <option value="{{ $y }}">{{ $y }}</option>
+            @for($y = $jNow; $y >= $jNow - 3; $y--)
+                <option value="{{ $y }}">{{ \App\Support\JDate::toPersianDigits((string) $y) }}</option>
             @endfor
         </select>
+        @php $jMonths = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند']; @endphp
         <select wire:model.live="month"
             class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0f766e] bg-white">
-            @for($m = 1; $m <= 12; $m++)
-                <option value="{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}">ماه {{ $m }}</option>
-            @endfor
+            @foreach($jMonths as $i => $mName)
+                <option value="{{ str_pad($i + 1, 2, '0', STR_PAD_LEFT) }}">{{ $mName }}</option>
+            @endforeach
         </select>
     </div>
 
@@ -60,7 +62,7 @@
                     <div class="flex-1 rounded-t-sm bg-green-400 transition-all" style="height: {{ max(2, ($d['payments'] / $maxVal) * 100) }}%"></div>
                     <div class="flex-1 rounded-t-sm bg-red-400 transition-all" style="height: {{ max(2, ($d['expenses'] / $maxVal) * 100) }}%"></div>
                 </div>
-                <span class="text-gray-400 text-[10px] truncate w-full text-center">{{ substr($d['label'], -2) }}</span>
+                <span class="text-gray-400 text-[10px] truncate w-full text-center">{{ mb_substr($d['label'], -2) }}</span>
             </div>
             @endforeach
         </div>
