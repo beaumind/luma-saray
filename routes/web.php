@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Auth\Login;
+use App\Livewire\Auth\Register;
 use App\Livewire\Buildings\Index as BuildingsIndex;
 use App\Livewire\Buildings\Show as BuildingsShow;
 use App\Livewire\Charges\Index as ChargesIndex;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 // Guest routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
+    Route::get('/register', Register::class)->name('register');
 });
 
 // Logout

@@ -80,7 +80,11 @@
                 </button>
             </form>
 
-            <div class="mt-6 pt-6 border-t border-gray-100 text-center">
+            <div class="mt-6 pt-6 border-t border-gray-100 text-center space-y-3">
+                <p class="text-sm text-gray-600">
+                    حساب کاربری ندارید؟
+                    <a href="{{ route('register') }}" wire:navigate class="text-[#0f766e] font-semibold hover:underline">ثبت مجموعه جدید</a>
+                </p>
                 <p class="text-xs text-gray-400">نسخه ۱.۰.۰ — لوما سرای</p>
             </div>
         </div>

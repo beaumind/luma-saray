@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Building;
 use App\Models\ChargeTemplate;
-use App\Models\ExpenseCategory;
 use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
@@ -16,8 +15,13 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(AdminSeeder::class);
 
+        $mobile = env('ADMIN_MOBILE', '09121714525');
+        $admin = User::withoutGlobalScopes()->where('mobile', $mobile)->firstOrFail();
+        $organizationId = $admin->organization_id;
+
         // Demo manager
         $manager1 = User::create([
+            'organization_id' => $organizationId,
             'name' => 'احمد رضایی',
             'mobile' => '09351234567',
             'password' => bcrypt('password'),
@@ -25,23 +29,9 @@ class DatabaseSeeder extends Seeder
         ]);
         $manager1->assignRole('manager');
 
-        // Expense categories
-        $categories = [
-            ['name' => 'نگهداری و تعمیرات', 'icon' => 'wrench', 'color' => '#f59e0b'],
-            ['name' => 'نظافت', 'icon' => 'sparkles', 'color' => '#10b981'],
-            ['name' => 'برق و روشنایی', 'icon' => 'bolt', 'color' => '#3b82f6'],
-            ['name' => 'آب', 'icon' => 'droplets', 'color' => '#06b6d4'],
-            ['name' => 'گاز', 'icon' => 'flame', 'color' => '#f97316'],
-            ['name' => 'آسانسور', 'icon' => 'arrow-up-down', 'color' => '#8b5cf6'],
-            ['name' => 'بیمه', 'icon' => 'shield', 'color' => '#ec4899'],
-            ['name' => 'سایر', 'icon' => 'more-horizontal', 'color' => '#6b7280'],
-        ];
-        foreach ($categories as $cat) {
-            ExpenseCategory::create($cat);
-        }
-
         // Sample building
         $building = Building::create([
+            'organization_id' => $organizationId,
             'name' => 'برج سپهر',
             'address' => 'تهران، ولیعصر، خیابان شهید بهشتی',
             'city' => 'تهران',
@@ -70,6 +60,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($residents as $index => [$number, $name, $mobile, $type, $count]) {
             $unit = Unit::create([
+                'organization_id' => $organizationId,
                 'building_id' => $building->id,
                 'number' => $number,
                 'floor' => (int) ceil(($index + 1) / 3),
@@ -81,6 +72,7 @@ class DatabaseSeeder extends Seeder
             ]);
 
             Resident::create([
+                'organization_id' => $organizationId,
                 'unit_id' => $unit->id,
                 'type' => $type,
                 'name' => $name,
@@ -93,6 +85,7 @@ class DatabaseSeeder extends Seeder
 
         // Charge templates
         ChargeTemplate::create([
+            'organization_id' => $organizationId,
             'building_id' => $building->id,
             'title' => 'شارژ ماهانه',
             'type' => 'fixed',
@@ -103,6 +96,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         ChargeTemplate::create([
+            'organization_id' => $organizationId,
             'building_id' => $building->id,
             'title' => 'شارژ سرانه',
             'type' => 'per_resident',

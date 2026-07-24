@@ -2,31 +2,25 @@
 
 namespace Database\Seeders;
 
+use App\Actions\CreateOrganization;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 
 class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach (['admin', 'manager', 'accountant'] as $roleName) {
-            Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
-        }
-
         $mobile = env('ADMIN_MOBILE', '09121714525');
 
-        if (User::where('mobile', $mobile)->exists()) {
+        if (User::withoutGlobalScopes()->where('mobile', $mobile)->exists()) {
             return;
         }
 
-        $user = User::create([
-            'name' => env('ADMIN_NAME', 'مدیر سیستم'),
-            'mobile' => $mobile,
-            'password' => bcrypt(env('ADMIN_PASSWORD', 'changeme')),
-            'is_active' => true,
-        ]);
-
-        $user->assignRole('admin');
+        app(CreateOrganization::class)->handle(
+            organizationName: env('ADMIN_ORG_NAME', 'مجموعه اصلی'),
+            adminName: env('ADMIN_NAME', 'مدیر سیستم'),
+            adminMobile: $mobile,
+            adminPassword: env('ADMIN_PASSWORD', 'changeme'),
+        );
     }
 }
