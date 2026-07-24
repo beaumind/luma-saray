@@ -5,12 +5,13 @@ WORKDIR /var/www/html
 RUN apk add --no-cache \
     libzip-dev zip \
     freetype-dev libpng-dev libwebp-dev jpeg-dev libjpeg-turbo-dev \
+    oniguruma-dev \
     autoconf build-base \
     libintl icu-dev
 
 RUN docker-php-ext-configure zip
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp
-RUN docker-php-ext-install -j$(nproc) gd zip pdo_mysql exif pcntl bcmath opcache
+RUN docker-php-ext-install -j$(nproc) gd zip pdo_mysql exif pcntl bcmath opcache mbstring
 RUN docker-php-ext-configure intl && docker-php-ext-install intl
 RUN pecl install redis && docker-php-ext-enable redis
 
