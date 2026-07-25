@@ -10,16 +10,19 @@
     <div class="flex flex-col gap-3.5 px-4 pt-4">
 
         {{-- Filters --}}
-        <div class="flex gap-2">
-            <select wire:model.live="building_id" class="h-9 flex-1 rounded-[10px] border border-[#ececef] bg-white px-2.5 text-[12.5px] outline-none">
+        <div class="flex flex-col gap-2">
+            <select wire:model.live="building_id" class="h-9 w-full rounded-[10px] border border-[#ececef] bg-white px-2.5 text-[12.5px] outline-none">
                 <option value="">همه ساختمان‌ها</option>
                 @foreach($buildings as $b)<option value="{{ $b->id }}">{{ $b->name }}</option>@endforeach
             </select>
-            <select wire:model.live="monthsBack" class="h-9 w-[110px] rounded-[10px] border border-[#ececef] bg-white px-2.5 text-[12.5px] outline-none">
-                <option value="3">۳ ماه اخیر</option>
-                <option value="4">۴ ماه اخیر</option>
-                <option value="6">۶ ماه اخیر</option>
-            </select>
+            <div class="flex gap-2">
+                <select wire:model.live="periodType" class="h-9 flex-1 rounded-[10px] border border-[#ececef] bg-white px-2.5 text-[12.5px] outline-none">
+                    @foreach($periodTypes as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach
+                </select>
+                <select wire:model.live="count" class="h-9 flex-1 rounded-[10px] border border-[#ececef] bg-white px-2.5 text-[12.5px] outline-none">
+                    @foreach($countOptions as $val => $label)<option value="{{ $val }}">{{ $label }}</option>@endforeach
+                </select>
+            </div>
         </div>
 
         {{-- Summary card --}}

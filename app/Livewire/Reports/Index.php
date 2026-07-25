@@ -18,7 +18,9 @@ class Index extends Component
 {
     public string $building_id = '';
 
-    public int $monthsBack = 3;
+    public string $periodType = 'seasonal';
+
+    public int $count = 4;
 
     /** @var array<int,string> selected optional column keys */
     public array $cols = [];
@@ -27,26 +29,33 @@ class Index extends Component
 
     public bool $colsInit = false;
 
+    /** Sensible default number of periods per type. */
+    private const DEFAULT_COUNT = ['monthly' => 6, 'seasonal' => 4, 'yearly' => 2];
+
     public function mount(): void
     {
         $this->syncDefaultCols();
     }
 
-    public function updatedMonthsBack(): void
+    public function updatedPeriodType(): void
+    {
+        $this->count = self::DEFAULT_COUNT[$this->periodType] ?? 4;
+        $this->syncDefaultCols(force: true);
+    }
+
+    public function updatedCount(): void
     {
         $this->syncDefaultCols(force: true);
     }
 
     private function syncDefaultCols(bool $force = false): void
     {
-        $periods = $this->periodsStub();
-        $available = DebtMatrix::optionalColumnKeys($periods);
+        $available = DebtMatrix::optionalColumnKeys($this->periodStub());
 
         if (! $this->colsInit || $force) {
             $this->cols = $available;
             $this->colsInit = true;
         } else {
-            // keep only still-valid keys after month count changes
             $this->cols = array_values(array_intersect($this->cols, $available));
             foreach ($available as $k) {
                 if (str_starts_with($k, 'month_') && ! in_array($k, $this->cols)) {
@@ -56,27 +65,16 @@ class Index extends Component
         }
     }
 
-    private function periodsStub(): array
+    /** Placeholder periods (only the count matters for column keys). */
+    private function periodStub(): array
     {
-        $now = Jalalian::now();
-        $jy = (int) $now->getYear();
-        $jm = (int) $now->getMonth();
-        $periods = [];
-        for ($i = 0; $i < $this->monthsBack; $i++) {
-            array_unshift($periods, ['jy' => $jy, 'jm' => $jm]);
-            if (--$jm < 1) {
-                $jm = 12;
-                $jy--;
-            }
-        }
-
-        return $periods;
+        return array_fill(0, max(1, min(24, $this->count)), ['label' => '']);
     }
 
     public function render()
     {
         $buildingId = $this->building_id ? (int) $this->building_id : null;
-        $matrix = DebtMatrix::build($buildingId, $this->monthsBack);
+        $matrix = DebtMatrix::build($buildingId, $this->periodType, $this->count);
 
         // Yearly summary (current Jalali year) for the report card.
         [$yStart, $yEnd] = JDate::gregorianYearRange((int) Jalalian::now()->getYear());
@@ -98,7 +96,8 @@ class Index extends Component
 
         $exportParams = [
             'building' => $this->building_id ?: null,
-            'months' => $this->monthsBack,
+            'type' => $this->periodType,
+            'count' => $this->count,
             'cols' => implode(',', $this->cols),
         ];
 
@@ -107,7 +106,19 @@ class Index extends Component
             'matrix' => $matrix,
             'summary' => $summary,
             'exportParams' => $exportParams,
+            'periodTypes' => DebtMatrix::PERIOD_TYPES,
+            'countOptions' => $this->countOptions(),
             'yearLabel' => JDate::toPersianDigits((string) Jalalian::now()->getYear()),
         ]);
+    }
+
+    /** Count choices offered per period type. */
+    private function countOptions(): array
+    {
+        return match ($this->periodType) {
+            'monthly' => [3 => '۳ ماه', 6 => '۶ ماه', 12 => '۱۲ ماه'],
+            'yearly' => [1 => '۱ سال', 2 => '۲ سال', 3 => '۳ سال'],
+            default => [2 => '۲ فصل', 4 => '۴ فصل', 8 => '۸ فصل'],
+        };
     }
 }

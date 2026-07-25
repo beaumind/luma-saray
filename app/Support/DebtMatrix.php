@@ -8,39 +8,29 @@ use App\Models\Unit;
 use Morilog\Jalali\Jalalian;
 
 /**
- * Builds the building debt matrix (units × Jalali months) shown on the Reports
+ * Builds the building debt matrix (units × time periods) shown on the Reports
  * screen and used by the Excel/PDF/image exports.
  *
- * Cell semantics per month: the amount PAID that month, coloured by how it
- * compares to what was charged — green = fully paid, yellow = partial,
- * red = unpaid, neutral = nothing charged.
+ * Periods can be monthly, seasonal (Jalali فصل), or yearly. Each period cell
+ * shows the amount PAID in that period, coloured by how it compares to what
+ * was charged — green = fully paid, yellow = partial, red = unpaid.
  */
 class DebtMatrix
 {
     private const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
+    private const SEASON_NAMES = ['بهار', 'تابستان', 'پاییز', 'زمستان'];
+
+    public const PERIOD_TYPES = ['monthly' => 'ماهانه', 'seasonal' => 'فصلی', 'yearly' => 'سالانه'];
+
     /**
-     * @return array{title:string, periods:array, columns:array, rows:array}
+     * @return array{title:string, periodType:string, periods:array, columns:array, rows:array}
      */
-    public static function build(?int $buildingId = null, int $monthsBack = 3): array
+    public static function build(?int $buildingId = null, string $periodType = 'seasonal', int $count = 4): array
     {
-        // Build the list of Jalali periods (oldest → newest), each with a Gregorian range.
-        $now = Jalalian::now();
-        $jy = (int) $now->getYear();
-        $jm = (int) $now->getMonth();
-        $periods = [];
-        for ($i = 0; $i < $monthsBack; $i++) {
-            [$s, $e] = JDate::gregorianMonthRange($jy, $jm);
-            array_unshift($periods, [
-                'jy' => $jy, 'jm' => $jm,
-                'label' => self::MONTH_NAMES[$jm - 1],
-                'start' => $s, 'end' => $e,
-            ]);
-            if (--$jm < 1) {
-                $jm = 12;
-                $jy--;
-            }
-        }
+        $periodType = array_key_exists($periodType, self::PERIOD_TYPES) ? $periodType : 'seasonal';
+        $count = max(1, min(24, $count));
+        $periods = self::makePeriods($periodType, $count);
         $windowStart = $periods[0]['start'];
 
         $units = Unit::query()
@@ -63,15 +53,20 @@ class DebtMatrix
 
             $pastDebt = 0;
             $totalDebt = 0;
-            $months = [];
-            foreach ($periods as $p) {
-                $months[] = ['paid' => 0, 'charged' => 0];
-            }
+            $latestCharge = ['date' => null, 'amount' => 0];
+            $buckets = array_fill(0, count($periods), ['paid' => 0, 'charged' => 0]);
 
             foreach ($txs as $t) {
                 $signed = $t->direction === 'debit' ? $t->amount : -$t->amount;
                 $totalDebt += $signed;
                 $date = $t->transaction_date;
+
+                // Track the latest single monthly charge for the "شارژ ماهانه" column.
+                if ($t->type === 'charge' && $t->direction === 'debit'
+                    && ($latestCharge['date'] === null || $date >= $latestCharge['date'])) {
+                    $latestCharge = ['date' => $date, 'amount' => $t->amount];
+                }
+
                 if ($date < $windowStart) {
                     $pastDebt += $signed;
 
@@ -80,28 +75,19 @@ class DebtMatrix
                 foreach ($periods as $idx => $p) {
                     if ($date >= $p['start'] && $date < $p['end']) {
                         if ($t->direction === 'credit') {
-                            $months[$idx]['paid'] += $t->amount;
+                            $buckets[$idx]['paid'] += $t->amount;
                         } else {
-                            $months[$idx]['charged'] += $t->amount;
+                            $buckets[$idx]['charged'] += $t->amount;
                         }
                         break;
                     }
                 }
             }
 
-            // Monthly charge = charges in the most recent period (fallback: any period).
-            $monthlyCharge = 0;
-            for ($i = count($months) - 1; $i >= 0; $i--) {
-                if ($months[$i]['charged'] > 0) {
-                    $monthlyCharge = $months[$i]['charged'];
-                    break;
-                }
-            }
-
-            $monthCells = [];
-            foreach ($months as $m) {
-                $charged = $m['charged'];
-                $paid = $m['paid'];
+            $cells = [];
+            foreach ($buckets as $b) {
+                $charged = $b['charged'];
+                $paid = $b['paid'];
                 if ($charged <= 0 && $paid <= 0) {
                     $state = 'neutral';
                 } elseif ($paid >= $charged && $charged > 0) {
@@ -111,7 +97,7 @@ class DebtMatrix
                 } else {
                     $state = 'partial';
                 }
-                $monthCells[] = ['value' => $paid, 'state' => $state];
+                $cells[] = ['value' => $paid, 'state' => $state];
             }
 
             $rows[] = [
@@ -119,9 +105,9 @@ class DebtMatrix
                 'resident' => $resident?->name ?? '—',
                 'owner' => $owner?->name ?? ($resident?->name ?? '—'),
                 'count' => (int) $unit->activeResidents->sum('resident_count'),
-                'monthly_charge' => $monthlyCharge,
+                'monthly_charge' => $latestCharge['amount'],
                 'past_debt' => max($pastDebt, 0),
-                'months' => $monthCells,
+                'months' => $cells,
                 'total_debt' => max($totalDebt, 0),
                 'notes' => $unit->notes ?? '',
             ];
@@ -132,6 +118,7 @@ class DebtMatrix
 
         return [
             'title' => $title,
+            'periodType' => $periodType,
             'periods' => $periods,
             'columns' => self::columns($periods),
             'rows' => $rows,
@@ -139,7 +126,58 @@ class DebtMatrix
     }
 
     /**
-     * All available columns with keys + labels (month columns expanded).
+     * Build the list of periods (oldest → newest), each with a label and a
+     * Gregorian [start, end) Carbon range.
+     */
+    private static function makePeriods(string $type, int $count): array
+    {
+        $now = Jalalian::now();
+        $jy = (int) $now->getYear();
+        $jm = (int) $now->getMonth();
+        $periods = [];
+
+        if ($type === 'yearly') {
+            for ($i = 0; $i < $count; $i++) {
+                $y = $jy - $i;
+                [$s, $e] = JDate::gregorianYearRange($y);
+                array_unshift($periods, [
+                    'label' => 'سال '.JDate::toPersianDigits((string) $y),
+                    'start' => $s, 'end' => $e,
+                ]);
+            }
+        } elseif ($type === 'monthly') {
+            for ($i = 0; $i < $count; $i++) {
+                [$s, $e] = JDate::gregorianMonthRange($jy, $jm);
+                array_unshift($periods, [
+                    'label' => self::MONTH_NAMES[$jm - 1].' '.JDate::toPersianDigits((string) $jy),
+                    'start' => $s, 'end' => $e,
+                ]);
+                if (--$jm < 1) {
+                    $jm = 12;
+                    $jy--;
+                }
+            }
+        } else { // seasonal
+            $si = intdiv($jm - 1, 3); // 0..3
+            for ($i = 0; $i < $count; $i++) {
+                [$s] = JDate::gregorianMonthRange($jy, $si * 3 + 1);
+                [, $e] = JDate::gregorianMonthRange($jy, $si * 3 + 3);
+                array_unshift($periods, [
+                    'label' => self::SEASON_NAMES[$si].' '.JDate::toPersianDigits((string) $jy),
+                    'start' => $s, 'end' => $e,
+                ]);
+                if (--$si < 0) {
+                    $si = 3;
+                    $jy--;
+                }
+            }
+        }
+
+        return $periods;
+    }
+
+    /**
+     * All available columns with keys + labels (period columns expanded).
      */
     public static function columns(array $periods): array
     {
@@ -152,8 +190,7 @@ class DebtMatrix
             ['key' => 'past_debt', 'label' => 'بدهی از گذشته'],
         ];
         foreach ($periods as $i => $p) {
-            $label = $p['label'] ?? (self::MONTH_NAMES[($p['jm'] ?? 1) - 1] ?? '');
-            $cols[] = ['key' => 'month_'.$i, 'label' => $label, 'month' => $i];
+            $cols[] = ['key' => 'month_'.$i, 'label' => $p['label'] ?? '', 'month' => $i];
         }
         $cols[] = ['key' => 'total_debt', 'label' => 'مجموع بدهی'];
         $cols[] = ['key' => 'notes', 'label' => 'توضیحات'];

@@ -26,8 +26,9 @@ class ReportExportController extends Controller
     private function resolve(Request $request): array
     {
         $buildingId = $request->integer('building') ?: null;
-        $months = max(1, min(12, $request->integer('months', 3)));
-        $matrix = DebtMatrix::build($buildingId, $months);
+        $type = (string) $request->query('type', 'seasonal');
+        $count = max(1, min(24, $request->integer('count', 4)));
+        $matrix = DebtMatrix::build($buildingId, $type, $count);
 
         $selected = array_filter(explode(',', (string) $request->query('cols', '')));
         $selected = array_merge(['number', 'resident'], $selected);
