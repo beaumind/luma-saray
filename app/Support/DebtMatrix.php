@@ -47,7 +47,7 @@ class DebtMatrix
             ->where('is_active', true)
             ->when($buildingId, fn ($q) => $q->where('building_id', $buildingId))
             ->with(['activeResidents', 'building'])
-            ->orderBy('building_id')->orderBy('floor')->orderBy('number')
+            ->orderBy('building_id')->orderByRaw('LENGTH(number)')->orderBy('number')
             ->get();
 
         $txByUnit = LedgerTransaction::query()

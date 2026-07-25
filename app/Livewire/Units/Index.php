@@ -145,7 +145,7 @@ class Index extends Component
             ->when($this->filter === 'occupied', fn ($q) => $q->whereHas('activeResidents'))
             ->when($this->filter === 'empty', fn ($q) => $q->whereDoesntHave('activeResidents'))
             ->orderBy('building_id')
-            ->orderBy('floor')
+            ->orderByRaw('LENGTH(number)')
             ->orderBy('number')
             ->paginate(30);
 

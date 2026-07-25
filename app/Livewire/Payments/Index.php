@@ -97,7 +97,7 @@ class Index extends Component
             ->paginate(15);
 
         $buildings = Building::where('is_active', true)->get();
-        $units = Unit::with('building')->where('is_active', true)->orderBy('building_id')->orderBy('number')->get();
+        $units = Unit::with('building')->where('is_active', true)->orderBy('building_id')->orderByRaw('LENGTH(number)')->orderBy('number')->get();
 
         return view('livewire.payments.index', compact('payments', 'buildings', 'units'));
     }

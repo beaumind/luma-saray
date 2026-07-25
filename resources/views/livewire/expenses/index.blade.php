@@ -17,7 +17,7 @@
                     <div class="flex h-10 w-10 flex-none items-center justify-center rounded-[11px] text-[15px] font-bold" style="background:{{ $col }}1a;color:{{ $col }}">{{ mb_substr($e->category->name ?? 'ه', 0, 1) }}</div>
                     <div class="min-w-0 flex-1">
                         <div class="truncate text-[13.5px] font-bold text-[#18181b]">{{ $e->title }}</div>
-                        <div class="text-[11.5px] text-[#a1a1aa]">{{ $e->category->name ?? 'بدون دسته' }} · <x-jdate :value="$e->expense_date" /> · {{ $e->distribution === 'all_units' ? 'همه واحدها' : 'واحدهای منتخب' }}</div>
+                        <div class="text-[11.5px] text-[#a1a1aa]">{{ $e->category->name ?? 'بدون دسته' }} · <x-jdate :value="$e->expense_date" /> · {{ ['all_units' => 'همه واحدها', 'selected_units' => 'واحدهای منتخب', 'fund' => 'از صندوق'][$e->distribution] ?? $e->distribution }}</div>
                     </div>
                     <div class="text-[13.5px] font-bold text-[#dc2626]">{{ Fmt::money($e->amount) }}</div>
                 </div>
@@ -54,7 +54,7 @@
                 <label class="flex flex-1 flex-col gap-1.5">
                     <span class="text-[12.5px] font-semibold text-[#3f3f46]">توزیع</span>
                     <select wire:model="distribution" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
-                        <option value="all_units">همه واحدها</option><option value="selected_units">واحدهای منتخب</option>
+                        <option value="fund">از صندوق</option><option value="all_units">همه واحدها</option><option value="selected_units">واحدهای منتخب</option>
                     </select>
                 </label>
                 <label class="flex flex-1 flex-col gap-1.5">

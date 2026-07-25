@@ -28,6 +28,12 @@ class ExpenseService
                 'attachments' => $data['attachments'] ?? null,
             ]);
 
+            // "fund" expenses are paid from the building fund and are NOT
+            // charged back to units — no per-unit ledger allocation.
+            if ($data['distribution'] === 'fund') {
+                return $expense;
+            }
+
             $units = $data['distribution'] === 'all_units'
                 ? $building->units()->where('is_active', true)->get()
                 : Unit::whereIn('id', $data['unit_ids'] ?? [])->get();

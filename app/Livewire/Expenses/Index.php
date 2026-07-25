@@ -69,7 +69,7 @@ class Index extends Component
             'title' => 'required|string|max:200',
             'amount' => 'required|integer|min:1',
             'expense_date' => ['required', new JalaliDate],
-            'distribution' => 'required|in:all_units,selected_units',
+            'distribution' => 'required|in:all_units,selected_units,fund',
             'responsible' => 'required|in:owner,tenant,both',
             'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
