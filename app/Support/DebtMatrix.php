@@ -19,8 +19,6 @@ class DebtMatrix
 {
     private const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
-    private const SEASON_NAMES = ['بهار', 'تابستان', 'پاییز', 'زمستان'];
-
     public const PERIOD_TYPES = ['monthly' => 'ماهانه', 'seasonal' => 'فصلی', 'yearly' => 'سالانه'];
 
     /**
@@ -29,8 +27,8 @@ class DebtMatrix
     public static function build(?int $buildingId = null, string $periodType = 'seasonal', int $count = 4): array
     {
         $periodType = array_key_exists($periodType, self::PERIOD_TYPES) ? $periodType : 'seasonal';
-        $count = max(1, min(24, $count));
-        $periods = self::makePeriods($periodType, $count);
+        $count = max(1, min(12, $count));
+        $periods = self::periods($periodType, $count);
         $windowStart = $periods[0]['start'];
 
         $units = Unit::query()
@@ -126,51 +124,66 @@ class DebtMatrix
     }
 
     /**
-     * Build the list of periods (oldest → newest), each with a label and a
-     * Gregorian [start, end) Carbon range.
+     * Build the list of month columns (oldest → newest), each with a label and
+     * a Gregorian [start, end) Carbon range. Every period type renders month
+     * columns; the type only chooses the window size and alignment:
+     *  - monthly:  last N calendar months (rolling, up to the current month)
+     *  - seasonal: last N Jalali seasons in full (N×3 months, season-aligned)
+     *  - yearly:   last N Jalali years in full (N×12 months, year-aligned)
      */
-    private static function makePeriods(string $type, int $count): array
+    public static function periods(string $type, int $count): array
     {
+        $count = max(1, min(12, $count));
         $now = Jalalian::now();
         $jy = (int) $now->getYear();
         $jm = (int) $now->getMonth();
-        $periods = [];
 
+        // Ordered list of [year, month] pairs, oldest first.
+        $list = [];
         if ($type === 'yearly') {
-            for ($i = 0; $i < $count; $i++) {
-                $y = $jy - $i;
-                [$s, $e] = JDate::gregorianYearRange($y);
-                array_unshift($periods, [
-                    'label' => 'سال '.JDate::toPersianDigits((string) $y),
-                    'start' => $s, 'end' => $e,
-                ]);
+            for ($k = $count - 1; $k >= 0; $k--) {
+                for ($m = 1; $m <= 12; $m++) {
+                    $list[] = [$jy - $k, $m];
+                }
             }
         } elseif ($type === 'monthly') {
+            $y = $jy;
+            $m = $jm;
             for ($i = 0; $i < $count; $i++) {
-                [$s, $e] = JDate::gregorianMonthRange($jy, $jm);
-                array_unshift($periods, [
-                    'label' => self::MONTH_NAMES[$jm - 1].' '.JDate::toPersianDigits((string) $jy),
-                    'start' => $s, 'end' => $e,
-                ]);
-                if (--$jm < 1) {
-                    $jm = 12;
-                    $jy--;
+                array_unshift($list, [$y, $m]);
+                if (--$m < 1) {
+                    $m = 12;
+                    $y--;
                 }
             }
-        } else { // seasonal
-            $si = intdiv($jm - 1, 3); // 0..3
+        } else { // seasonal — full seasons of 3 months, aligned to season start
+            $si = intdiv($jm - 1, 3);
+            $sy = $jy;
+            $seasons = [];
             for ($i = 0; $i < $count; $i++) {
-                [$s] = JDate::gregorianMonthRange($jy, $si * 3 + 1);
-                [, $e] = JDate::gregorianMonthRange($jy, $si * 3 + 3);
-                array_unshift($periods, [
-                    'label' => self::SEASON_NAMES[$si].' '.JDate::toPersianDigits((string) $jy),
-                    'start' => $s, 'end' => $e,
-                ]);
+                array_unshift($seasons, [$sy, $si]);
                 if (--$si < 0) {
                     $si = 3;
-                    $jy--;
+                    $sy--;
                 }
             }
+            foreach ($seasons as [$syy, $sii]) {
+                for ($m = $sii * 3 + 1; $m <= $sii * 3 + 3; $m++) {
+                    $list[] = [$syy, $m];
+                }
+            }
+        }
+
+        // Include the year in labels only when the window spans several years.
+        $showYear = count(array_unique(array_map(fn ($p) => $p[0], $list))) > 1;
+
+        $periods = [];
+        foreach ($list as [$y, $m]) {
+            [$s, $e] = JDate::gregorianMonthRange($y, $m);
+            $periods[] = [
+                'label' => self::MONTH_NAMES[$m - 1].($showYear ? ' '.JDate::toPersianDigits((string) $y) : ''),
+                'start' => $s, 'end' => $e,
+            ];
         }
 
         return $periods;

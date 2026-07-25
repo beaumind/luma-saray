@@ -20,7 +20,7 @@ class Index extends Component
 
     public string $periodType = 'seasonal';
 
-    public int $count = 4;
+    public int $count = 1;
 
     /** @var array<int,string> selected optional column keys */
     public array $cols = [];
@@ -30,7 +30,7 @@ class Index extends Component
     public bool $colsInit = false;
 
     /** Sensible default number of periods per type. */
-    private const DEFAULT_COUNT = ['monthly' => 6, 'seasonal' => 4, 'yearly' => 2];
+    private const DEFAULT_COUNT = ['monthly' => 6, 'seasonal' => 1, 'yearly' => 1];
 
     public function mount(): void
     {
@@ -50,7 +50,7 @@ class Index extends Component
 
     private function syncDefaultCols(bool $force = false): void
     {
-        $available = DebtMatrix::optionalColumnKeys($this->periodStub());
+        $available = DebtMatrix::optionalColumnKeys(DebtMatrix::periods($this->periodType, $this->count));
 
         if (! $this->colsInit || $force) {
             $this->cols = $available;
@@ -63,12 +63,6 @@ class Index extends Component
                 }
             }
         }
-    }
-
-    /** Placeholder periods (only the count matters for column keys). */
-    private function periodStub(): array
-    {
-        return array_fill(0, max(1, min(24, $this->count)), ['label' => '']);
     }
 
     public function render()
@@ -117,8 +111,8 @@ class Index extends Component
     {
         return match ($this->periodType) {
             'monthly' => [3 => '۳ ماه', 6 => '۶ ماه', 12 => '۱۲ ماه'],
-            'yearly' => [1 => '۱ سال', 2 => '۲ سال', 3 => '۳ سال'],
-            default => [2 => '۲ فصل', 4 => '۴ فصل', 8 => '۸ فصل'],
+            'yearly' => [1 => '۱ سال', 2 => '۲ سال'],
+            default => [1 => '۱ فصل', 2 => '۲ فصل', 4 => '۴ فصل'],
         };
     }
 }
