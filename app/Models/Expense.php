@@ -24,6 +24,7 @@ class Expense extends Model
         'description',
         'distribution',
         'responsible',
+        'paid_by_unit_id',
         'attachments',
     ];
 
@@ -46,6 +47,11 @@ class Expense extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function paidByUnit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'paid_by_unit_id');
     }
 
     public function units(): BelongsToMany

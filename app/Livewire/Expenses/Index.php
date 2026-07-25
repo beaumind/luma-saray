@@ -37,7 +37,9 @@ class Index extends Component
 
     public string $description = '';
 
-    public string $distribution = 'all_units';
+    public string $distribution = 'fund';
+
+    public string $paid_by_unit_id = '';
 
     public string $responsible = 'owner';
 
@@ -70,6 +72,7 @@ class Index extends Component
             'amount' => 'required|integer|min:1',
             'expense_date' => ['required', new JalaliDate],
             'distribution' => 'required|in:all_units,selected_units,fund',
+            'paid_by_unit_id' => 'nullable|exists:units,id',
             'responsible' => 'required|in:owner,tenant,both',
             'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
@@ -86,6 +89,7 @@ class Index extends Component
             'expense_date' => JDate::toGregorian($this->expense_date),
             'description' => $this->description ?: null,
             'distribution' => $this->distribution,
+            'paid_by_unit_id' => $this->distribution === 'fund' ? ($this->paid_by_unit_id ?: null) : null,
             'responsible' => $this->responsible,
             'unit_ids' => $this->selected_unit_ids,
             'attachments' => $attachmentPaths ?: null,
@@ -104,7 +108,8 @@ class Index extends Component
         $this->amount = '';
         $this->expense_date = '';
         $this->description = '';
-        $this->distribution = 'all_units';
+        $this->distribution = 'fund';
+        $this->paid_by_unit_id = '';
         $this->responsible = 'owner';
         $this->selected_unit_ids = [];
         $this->attachments = [];
@@ -113,7 +118,7 @@ class Index extends Component
 
     public function render()
     {
-        $expenses = Expense::with(['building', 'category', 'creator'])
+        $expenses = Expense::with(['building', 'category', 'creator', 'paidByUnit'])
             ->when($this->search, fn ($q) => $q->where('title', 'like', "%{$this->search}%"))
             ->when($this->building_id_filter, fn ($q) => $q->where('building_id', $this->building_id_filter))
             ->orderByDesc('expense_date')

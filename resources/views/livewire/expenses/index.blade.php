@@ -18,6 +18,7 @@
                     <div class="min-w-0 flex-1">
                         <div class="truncate text-[13.5px] font-bold text-[#18181b]">{{ $e->title }}</div>
                         <div class="text-[11.5px] text-[#a1a1aa]">{{ $e->category->name ?? 'بدون دسته' }} · <x-jdate :value="$e->expense_date" /> · {{ ['all_units' => 'همه واحدها', 'selected_units' => 'واحدهای منتخب', 'fund' => 'از صندوق'][$e->distribution] ?? $e->distribution }}</div>
+                        @if($e->paidByUnit)<div class="mt-0.5 text-[11px] font-semibold text-[#16a34a]">پرداخت مستقیم توسط واحد {{ Fmt::fa($e->paidByUnit->number) }} — از بدهی کسر شد</div>@endif
                     </div>
                     <div class="text-[13.5px] font-bold text-[#dc2626]">{{ Fmt::money($e->amount) }}</div>
                 </div>
@@ -32,7 +33,7 @@
         <form wire:submit="save" class="flex flex-col gap-3">
             <label class="flex flex-col gap-1.5">
                 <span class="text-[12.5px] font-semibold text-[#3f3f46]">ساختمان</span>
-                <select wire:model="building_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                <select wire:model.live="building_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
                     <option value="">انتخاب ساختمان…</option>
                     @foreach($buildings as $b)<option value="{{ $b->id }}">{{ $b->name }}</option>@endforeach
                 </select>
@@ -53,7 +54,7 @@
             <div class="flex gap-2.5">
                 <label class="flex flex-1 flex-col gap-1.5">
                     <span class="text-[12.5px] font-semibold text-[#3f3f46]">توزیع</span>
-                    <select wire:model="distribution" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                    <select wire:model.live="distribution" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
                         <option value="fund">از صندوق</option><option value="all_units">همه واحدها</option><option value="selected_units">واحدهای منتخب</option>
                     </select>
                 </label>
@@ -64,6 +65,18 @@
                     </select>
                 </label>
             </div>
+
+            @if($distribution === 'fund')
+                <label class="flex flex-col gap-1.5">
+                    <span class="text-[12.5px] font-semibold text-[#3f3f46]">پرداخت‌کننده (کسر از بدهی واحد)</span>
+                    <select wire:model="paid_by_unit_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                        <option value="">هیچ‌کدام — از موجودی صندوق پرداخت شد</option>
+                        @foreach($units as $u)<option value="{{ $u->id }}">واحد {{ Fmt::fa($u->number) }} — از بدهی این واحد کسر شود</option>@endforeach
+                    </select>
+                    <span class="text-[11px] text-[#a1a1aa]">اگر یک واحد شخصاً این هزینه را پرداخت کرده، آن را انتخاب کنید تا معادل مبلغ از بدهی او کم شود.</span>
+                </label>
+            @endif
+
             <x-input wire:model="description" label="توضیحات" />
             <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت و توزیع هزینه</button>
         </form>

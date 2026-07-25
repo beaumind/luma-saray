@@ -10,11 +10,13 @@ use Illuminate\Support\Facades\DB;
 
 class ExpenseService
 {
-    public function __construct(private LedgerService $ledger) {}
+    public function __construct(private LedgerService $ledger, private PaymentService $payments) {}
 
     public function createAndDistribute(array $data, Building $building): Expense
     {
         return DB::transaction(function () use ($data, $building) {
+            $paidByUnitId = ! empty($data['paid_by_unit_id']) ? (int) $data['paid_by_unit_id'] : null;
+
             $expense = Expense::create([
                 'building_id' => $building->id,
                 'expense_category_id' => $data['expense_category_id'] ?? null,
@@ -25,12 +27,24 @@ class ExpenseService
                 'description' => $data['description'] ?? null,
                 'distribution' => $data['distribution'],
                 'responsible' => $data['responsible'],
+                'paid_by_unit_id' => $paidByUnitId,
                 'attachments' => $data['attachments'] ?? null,
             ]);
 
             // "fund" expenses are paid from the building fund and are NOT
-            // charged back to units — no per-unit ledger allocation.
+            // charged back to units. If a unit paid the cost directly, credit
+            // that unit (reducing its debt to the fund) by the cost amount —
+            // the fund cash nets out, the unit owes less.
             if ($data['distribution'] === 'fund') {
+                if ($paidByUnitId && ($payer = Unit::find($paidByUnitId))) {
+                    $this->payments->register($payer, [
+                        'amount' => (int) $expense->amount,
+                        'payment_date' => $expense->expense_date->format('Y-m-d'),
+                        'tracking_number' => null,
+                        'notes' => "پرداخت مستقیم هزینه: {$expense->title}",
+                    ]);
+                }
+
                 return $expense;
             }
 
