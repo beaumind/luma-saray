@@ -3,6 +3,7 @@
 namespace App\Livewire\Payments;
 
 use App\Models\Building;
+use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\Unit;
 use App\Rules\JalaliDate;
@@ -24,7 +25,12 @@ class Index extends Component
 
     public bool $showModal = false;
 
+    /** charge | fund_cost | unit_cost | unit_credit */
+    public string $type = 'charge';
+
     public string $unit_id = '';
+
+    public string $expense_id = '';
 
     public string $amount = '';
 
@@ -50,27 +56,40 @@ class Index extends Component
 
     public function save(PaymentService $service): void
     {
-        $this->validate([
-            'unit_id' => 'required|exists:units,id',
+        $rules = [
+            'type' => 'required|in:charge,fund_cost,unit_cost,unit_credit',
             'amount' => 'required|integer|min:1',
             'payment_date' => ['required', new JalaliDate],
             'tracking_number' => 'nullable|string|max:100',
             'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-        ]);
-
-        $receiptPath = null;
-        if ($this->receipt) {
-            $receiptPath = $this->receipt->store('receipts', 'public');
+            'unit_id' => 'nullable|exists:units,id',
+            'expense_id' => 'nullable|exists:expenses,id',
+        ];
+        if (in_array($this->type, ['charge', 'unit_cost', 'unit_credit'])) {
+            $rules['unit_id'] = 'required|exists:units,id';
         }
+        if (in_array($this->type, ['fund_cost', 'unit_cost', 'unit_credit'])) {
+            $rules['expense_id'] = 'required|exists:expenses,id';
+        }
+        $this->validate($rules);
 
-        $unit = Unit::findOrFail((int) $this->unit_id);
-        $service->register($unit, [
+        $data = [
             'amount' => (int) $this->amount,
             'payment_date' => JDate::toGregorian($this->payment_date),
             'tracking_number' => $this->tracking_number ?: null,
             'notes' => $this->notes ?: null,
-            'receipt_path' => $receiptPath,
-        ]);
+            'receipt_path' => $this->receipt ? $this->receipt->store('receipts', 'public') : null,
+        ];
+
+        $unit = $this->unit_id ? Unit::findOrFail((int) $this->unit_id) : null;
+        $expense = $this->expense_id ? Expense::findOrFail((int) $this->expense_id) : null;
+
+        match ($this->type) {
+            'fund_cost' => $service->registerFundCost($expense, $data),
+            'unit_cost' => $service->registerUnitCost($unit, $expense, $data),
+            'unit_credit' => $service->registerUnitCredit($unit, $expense, $data),
+            default => $service->register($unit, $data),
+        };
 
         $this->showModal = false;
         $this->resetForm();
@@ -79,7 +98,9 @@ class Index extends Component
 
     private function resetForm(): void
     {
+        $this->type = 'charge';
         $this->unit_id = '';
+        $this->expense_id = '';
         $this->amount = '';
         $this->payment_date = '';
         $this->tracking_number = '';
@@ -90,15 +111,17 @@ class Index extends Component
 
     public function render()
     {
-        $payments = Payment::with(['unit.building', 'creator'])
+        $payments = Payment::with(['unit.building', 'expense', 'creator'])
             ->when($this->search, fn ($q) => $q->whereHas('unit', fn ($uq) => $uq->where('number', 'like', "%{$this->search}%")))
             ->when($this->building_id_filter, fn ($q) => $q->where('building_id', $this->building_id_filter))
-            ->orderByDesc('payment_date')
+            ->orderByDesc('payment_date')->orderByDesc('id')
             ->paginate(15);
 
         $buildings = Building::where('is_active', true)->get();
-        $units = Unit::with('building')->where('is_active', true)->orderBy('building_id')->orderByRaw('LENGTH(number)')->orderBy('number')->get();
+        $units = Unit::with('building')->where('is_active', true)
+            ->orderBy('building_id')->orderByRaw('LENGTH(number)')->orderBy('number')->get();
+        $expenses = Expense::with('building')->orderByDesc('expense_date')->orderByDesc('id')->limit(200)->get();
 
-        return view('livewire.payments.index', compact('payments', 'buildings', 'units'));
+        return view('livewire.payments.index', compact('payments', 'buildings', 'units', 'expenses'));
     }
 }

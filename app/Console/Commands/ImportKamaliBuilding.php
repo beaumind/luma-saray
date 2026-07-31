@@ -201,7 +201,7 @@ class ImportKamaliBuilding extends Command
                 }
             }
 
-            $this->importExpenses($building->id, $orgId, $admin->id);
+            $this->importExpenses($building->id, $orgId, $admin->id, $payments);
         });
 
         return $this->verify($orgId, $buildingName);
@@ -251,16 +251,23 @@ class ImportKamaliBuilding extends Command
         }
     }
 
-    private function importExpenses(int $buildingId, int $orgId, int $adminId): void
+    private function importExpenses(int $buildingId, int $orgId, int $adminId, PaymentService $payments): void
     {
         $categories = ExpenseCategory::pluck('id', 'name');
         foreach (self::EXPENSES as [$jdate, $title, $person, $amount]) {
-            Expense::create([
+            $expense = Expense::create([
                 'organization_id' => $orgId, 'building_id' => $buildingId,
                 'expense_category_id' => $categories[$this->categoryFor($title)] ?? null,
                 'created_by' => $adminId, 'title' => $title, 'amount' => $amount,
                 'expense_date' => JDate::toGregorian($jdate),
                 'description' => 'مسئول: '.$person, 'distribution' => 'fund', 'responsible' => 'both',
+            ]);
+
+            // These fund costs were historically paid from the fund — record the disbursement.
+            $payments->registerFundCost($expense, [
+                'amount' => $amount,
+                'payment_date' => JDate::toGregorian($jdate),
+                'notes' => 'پرداخت از صندوق — مسئول: '.$person,
             ]);
         }
     }

@@ -55,7 +55,15 @@ class DebtMatrix
             $buckets = array_fill(0, count($periods), ['paid' => 0, 'charged' => 0]);
 
             foreach ($txs as $t) {
-                $signed = $t->direction === 'debit' ? $t->amount : -$t->amount;
+                // Only charge/cost debits and settlement payments affect debt;
+                // standalone creditor entries are tracked separately.
+                if ($t->direction === 'debit' && in_array($t->type, ['charge', 'cost', 'expense'])) {
+                    $signed = $t->amount;
+                } elseif ($t->direction === 'credit' && $t->type === 'payment') {
+                    $signed = -$t->amount;
+                } else {
+                    $signed = 0;
+                }
                 $totalDebt += $signed;
                 $date = $t->transaction_date;
 
@@ -72,9 +80,9 @@ class DebtMatrix
                 }
                 foreach ($periods as $idx => $p) {
                     if ($date >= $p['start'] && $date < $p['end']) {
-                        if ($t->direction === 'credit') {
+                        if ($t->direction === 'credit' && $t->type === 'payment') {
                             $buckets[$idx]['paid'] += $t->amount;
-                        } else {
+                        } elseif ($t->direction === 'debit' && in_array($t->type, ['charge', 'cost', 'expense'])) {
                             $buckets[$idx]['charged'] += $t->amount;
                         }
                         break;

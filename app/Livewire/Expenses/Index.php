@@ -37,15 +37,14 @@ class Index extends Component
 
     public string $description = '';
 
+    /** fund | all_units | single_unit */
     public string $distribution = 'fund';
 
-    public string $paid_by_unit_id = '';
+    public string $single_unit_id = '';
 
     public string $responsible = 'owner';
 
-    public array $selected_unit_ids = [];
-
-    public $attachments = [];
+    public $image;
 
     public function updatingSearch(): void
     {
@@ -71,15 +70,15 @@ class Index extends Component
             'title' => 'required|string|max:200',
             'amount' => 'required|integer|min:1',
             'expense_date' => ['required', new JalaliDate],
-            'distribution' => 'required|in:all_units,selected_units,fund',
-            'paid_by_unit_id' => 'nullable|exists:units,id',
+            'distribution' => 'required|in:fund,all_units,single_unit',
+            'single_unit_id' => 'required_if:distribution,single_unit|nullable|exists:units,id',
             'responsible' => 'required|in:owner,tenant,both',
-            'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
 
-        $attachmentPaths = [];
-        foreach ($this->attachments as $file) {
-            $attachmentPaths[] = $file->store('expenses', 'public');
+        $attachments = null;
+        if ($this->image) {
+            $attachments = [$this->image->store('expenses', 'public')];
         }
 
         $service->createAndDistribute([
@@ -89,15 +88,14 @@ class Index extends Component
             'expense_date' => JDate::toGregorian($this->expense_date),
             'description' => $this->description ?: null,
             'distribution' => $this->distribution,
-            'paid_by_unit_id' => $this->distribution === 'fund' ? ($this->paid_by_unit_id ?: null) : null,
             'responsible' => $this->responsible,
-            'unit_ids' => $this->selected_unit_ids,
-            'attachments' => $attachmentPaths ?: null,
+            'unit_ids' => $this->distribution === 'single_unit' ? [(int) $this->single_unit_id] : [],
+            'attachments' => $attachments,
         ], Building::find($this->building_id));
 
         $this->showModal = false;
         $this->resetForm();
-        session()->flash('success', 'هزینه ثبت و توزیع شد.');
+        session()->flash('success', 'هزینه ثبت شد.');
     }
 
     private function resetForm(): void
@@ -109,16 +107,15 @@ class Index extends Component
         $this->expense_date = '';
         $this->description = '';
         $this->distribution = 'fund';
-        $this->paid_by_unit_id = '';
+        $this->single_unit_id = '';
         $this->responsible = 'owner';
-        $this->selected_unit_ids = [];
-        $this->attachments = [];
+        $this->image = null;
         $this->resetValidation();
     }
 
     public function render()
     {
-        $expenses = Expense::with(['building', 'category', 'creator', 'paidByUnit'])
+        $expenses = Expense::with(['building', 'category', 'creator'])
             ->when($this->search, fn ($q) => $q->where('title', 'like', "%{$this->search}%"))
             ->when($this->building_id_filter, fn ($q) => $q->where('building_id', $this->building_id_filter))
             ->orderByDesc('expense_date')
@@ -127,7 +124,8 @@ class Index extends Component
         $buildings = Building::where('is_active', true)->get();
         $categories = ExpenseCategory::where('is_active', true)->get();
         $units = $this->building_id
-            ? Unit::where('building_id', $this->building_id)->where('is_active', true)->get()
+            ? Unit::where('building_id', $this->building_id)->where('is_active', true)
+                ->orderByRaw('LENGTH(number)')->orderBy('number')->get()
             : collect();
 
         return view('livewire.expenses.index', compact('expenses', 'buildings', 'categories', 'units'));

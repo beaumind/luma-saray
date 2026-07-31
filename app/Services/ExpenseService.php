@@ -10,13 +10,21 @@ use Illuminate\Support\Facades\DB;
 
 class ExpenseService
 {
-    public function __construct(private LedgerService $ledger, private PaymentService $payments) {}
+    public function __construct(private LedgerService $ledger) {}
 
+    /**
+     * Record a cost. It is an obligation only — payments (fund pays it, a unit
+     * pays it, or a unit fronts it as a creditor) are recorded separately in
+     * the Payments flow.
+     *
+     * distribution:
+     *  - fund:        borne by the building fund; no unit is charged.
+     *  - all_units:   split equally across the building's active units.
+     *  - single_unit: charged entirely to one unit (data['unit_ids'] = [id]).
+     */
     public function createAndDistribute(array $data, Building $building): Expense
     {
         return DB::transaction(function () use ($data, $building) {
-            $paidByUnitId = ! empty($data['paid_by_unit_id']) ? (int) $data['paid_by_unit_id'] : null;
-
             $expense = Expense::create([
                 'building_id' => $building->id,
                 'expense_category_id' => $data['expense_category_id'] ?? null,
@@ -26,25 +34,11 @@ class ExpenseService
                 'expense_date' => $data['expense_date'],
                 'description' => $data['description'] ?? null,
                 'distribution' => $data['distribution'],
-                'responsible' => $data['responsible'],
-                'paid_by_unit_id' => $paidByUnitId,
+                'responsible' => $data['responsible'] ?? 'owner',
                 'attachments' => $data['attachments'] ?? null,
             ]);
 
-            // "fund" expenses are paid from the building fund and are NOT
-            // charged back to units. If a unit paid the cost directly, credit
-            // that unit (reducing its debt to the fund) by the cost amount —
-            // the fund cash nets out, the unit owes less.
             if ($data['distribution'] === 'fund') {
-                if ($paidByUnitId && ($payer = Unit::find($paidByUnitId))) {
-                    $this->payments->register($payer, [
-                        'amount' => (int) $expense->amount,
-                        'payment_date' => $expense->expense_date->format('Y-m-d'),
-                        'tracking_number' => null,
-                        'notes' => "پرداخت مستقیم هزینه: {$expense->title}",
-                    ]);
-                }
-
                 return $expense;
             }
 
@@ -52,12 +46,12 @@ class ExpenseService
                 ? $building->units()->where('is_active', true)->get()
                 : Unit::whereIn('id', $data['unit_ids'] ?? [])->get();
 
-            if ($units->count() === 0) {
+            if ($units->isEmpty()) {
                 return $expense;
             }
 
-            $perUnit = (int) floor($expense->amount / $units->count());
-            $remainder = $expense->amount - ($perUnit * $units->count());
+            $perUnit = intdiv((int) $expense->amount, $units->count());
+            $remainder = (int) $expense->amount - ($perUnit * $units->count());
 
             foreach ($units as $index => $unit) {
                 $unitAmount = $index === 0 ? $perUnit + $remainder : $perUnit;
@@ -68,10 +62,10 @@ class ExpenseService
                     'amount' => $unitAmount,
                 ]);
 
-                $this->ledger->recordExpenseAllocation(
+                $this->ledger->recordCost(
                     $unit,
                     $unitAmount,
-                    "هزینه: {$expense->title}",
+                    "سهم هزینه: {$expense->title}",
                     $expense->expense_date->format('Y-m-d'),
                     $expense->id
                 );

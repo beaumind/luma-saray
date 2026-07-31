@@ -74,19 +74,33 @@ class Show extends Component
         session()->flash('success', 'پرداخت با موفقیت ثبت شد.');
     }
 
+    public function applyCredit(PaymentService $service): void
+    {
+        $applied = $service->applyCredit($this->unit, $this->unit->creditBalance, JDate::toGregorian(JDate::today()));
+        $this->unit->refresh();
+        session()->flash('success', $applied > 0
+            ? 'بستانکاری بر بدهی اعمال شد.'
+            : 'بستانکاری قابل اعمالی وجود ندارد.');
+    }
+
     public function render()
     {
-        // Load full ledger ascending to build a running balance, then show newest first.
+        // Load full ledger ascending to build a running DEBT balance, then show newest first.
         $asc = LedgerTransaction::where('unit_id', $this->unit->id)
             ->orderBy('transaction_date')->orderBy('id')
             ->get();
 
+        $debtTypes = ['charge', 'cost', 'expense'];
         $run = 0;
         $ledger = [];
         foreach ($asc as $t) {
-            $run += $t->direction === 'debit' ? $t->amount : -$t->amount;
+            if ($t->direction === 'debit' && in_array($t->type, $debtTypes)) {
+                $run += $t->amount;
+            } elseif ($t->direction === 'credit' && $t->type === 'payment') {
+                $run -= $t->amount;
+            }
             $ledger[] = [
-                'title' => $t->description ?: ($t->type === 'payment' ? 'پرداخت' : ($t->type === 'expense' ? 'هزینه' : 'شارژ')),
+                'title' => $t->description ?: $this->typeLabel($t->type),
                 'date' => JDate::toJalali($t->transaction_date),
                 'credit' => $t->direction === 'credit',
                 'type' => $t->type,
@@ -96,12 +110,22 @@ class Show extends Component
         }
         $ledger = array_reverse($ledger);
 
-        $residents = $this->unit->activeResidents()->get();
-
         return view('livewire.units.show', [
             'ledger' => $ledger,
             'balance' => $this->unit->balance,
-            'residents' => $residents,
+            'creditBalance' => $this->unit->creditBalance,
+            'residents' => $this->unit->activeResidents()->get(),
         ])->title('واحد '.$this->unit->number);
+    }
+
+    private function typeLabel(string $type): string
+    {
+        return match ($type) {
+            'payment' => 'پرداخت',
+            'cost', 'expense' => 'هزینه',
+            'credit' => 'بستانکاری',
+            'credit_used' => 'اعمال بستانکاری',
+            default => 'شارژ',
+        };
     }
 }

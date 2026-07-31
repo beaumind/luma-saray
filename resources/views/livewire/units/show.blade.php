@@ -26,6 +26,19 @@
                 </div>
                 <span class="rounded-full px-2.5 py-1 text-[11px] font-bold" style="background:{{ $balBg }};color:{{ $balColor }}">{{ $balState }}</span>
             </div>
+
+            @if($creditBalance > 0)
+                <div class="mt-3 flex items-center justify-between rounded-[12px] bg-[#eef0fb] px-3 py-2.5">
+                    <div>
+                        <div class="text-[11.5px] text-[#5b5bd6]">بستانکاری واحد (پرداختی بابت صندوق)</div>
+                        <div class="mt-0.5 text-[16px] font-extrabold text-[#5b5bd6]">{{ Fmt::money($creditBalance) }} ریال</div>
+                    </div>
+                    @if($balance > 0)
+                        <button wire:click="applyCredit" wire:confirm="بستانکاری این واحد بر بدهی‌اش اعمال شود؟" type="button"
+                                class="rounded-[10px] bg-[#5b5bd6] px-3 py-2 text-[12px] font-bold text-white">اعمال بر بدهی</button>
+                    @endif
+                </div>
+            @endif
         </div>
 
         {{-- Residents --}}
@@ -49,12 +62,22 @@
                 <span class="text-[11px] text-[#a1a1aa]">صورتحساب</span>
             </div>
             @forelse($ledger as $t)
+                @php
+                    $isCreditNote = in_array($t['type'], ['credit', 'credit_used']);
+                    $dot = match($t['type']) {
+                        'payment' => '#16a34a',
+                        'cost', 'expense' => '#d97706',
+                        'credit', 'credit_used' => '#5b5bd6',
+                        default => '#71717a',
+                    };
+                    $amtColor = $isCreditNote ? '#5b5bd6' : ($t['credit'] ? '#16a34a' : '#dc2626');
+                @endphp
                 <div class="flex items-center gap-[11px] border-b border-[#f7f7f8] px-[15px] py-3">
-                    <div class="h-2 w-2 flex-none rounded-full" style="background:{{ $t['credit'] ? '#16a34a' : ($t['type'] === 'expense' ? '#d97706' : '#5b5bd6') }}"></div>
+                    <div class="h-2 w-2 flex-none rounded-full" style="background:{{ $dot }}"></div>
                     <div class="min-w-0 flex-1"><div class="truncate text-[13px] font-semibold text-[#18181b]">{{ $t['title'] }}</div><div class="text-[11px] text-[#a1a1aa]">{{ $t['date'] }}</div></div>
                     <div class="flex-none text-left">
-                        <div class="text-[13.5px] font-bold tabular-nums" style="color:{{ $t['credit'] ? '#16a34a' : '#dc2626' }}">{{ $t['credit'] ? '−' : '+' }}{{ Fmt::money($t['amount']) }}</div>
-                        <div class="text-[10.5px] tabular-nums text-[#a1a1aa]">مانده: {{ Fmt::money($t['run']) }}</div>
+                        <div class="text-[13.5px] font-bold tabular-nums" style="color:{{ $amtColor }}">{{ $t['credit'] ? '−' : '+' }}{{ Fmt::money($t['amount']) }}</div>
+                        <div class="text-[10.5px] tabular-nums text-[#a1a1aa]">بدهی: {{ Fmt::money($t['run']) }}</div>
                     </div>
                 </div>
             @empty

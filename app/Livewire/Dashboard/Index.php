@@ -18,14 +18,17 @@ class Index extends Component
     {
         $now = Jalalian::now();
 
-        $totalPaid = (int) Payment::sum('amount');
-        $totalExpense = (int) Expense::sum('amount');
-        $balance = $totalPaid - $totalExpense;
+        // Fund cash = money units paid in (charge + unit cost shares) minus what
+        // the fund paid out for costs.
+        $inflow = (int) Payment::whereIn('type', ['charge', 'unit_cost'])->sum('amount');
+        $fundOut = (int) Payment::where('type', 'fund_cost')->sum('amount');
+        $balance = $inflow - $fundOut;
 
         [$monthStart, $monthEnd] = JDate::gregorianMonthRange((int) $now->getYear(), (int) $now->getMonth());
         $monthEndInclusive = $monthEnd->copy()->subDay();
 
-        $monthIncome = (int) Payment::whereBetween('payment_date', [$monthStart, $monthEndInclusive])->sum('amount');
+        $monthIncome = (int) Payment::whereIn('type', ['charge', 'unit_cost'])
+            ->whereBetween('payment_date', [$monthStart, $monthEndInclusive])->sum('amount');
         $monthCharges = (int) LedgerTransaction::where('direction', 'debit')->where('type', 'charge')
             ->whereBetween('transaction_date', [$monthStart, $monthEndInclusive])->sum('amount');
 
@@ -57,13 +60,13 @@ class Index extends Component
         foreach ($months as [$my, $mm]) {
             [$s, $e] = JDate::gregorianMonthRange($my, $mm);
             $eIncl = $e->copy()->subDay();
-            $inc = (int) Payment::whereBetween('payment_date', [$s, $eIncl])->sum('amount');
+            $inc = (int) Payment::whereIn('type', ['charge', 'unit_cost'])->whereBetween('payment_date', [$s, $eIncl])->sum('amount');
             $exp = (int) Expense::whereBetween('expense_date', [$s, $eIncl])->sum('amount');
             $bars[] = ['m' => mb_substr($monthNames[$mm - 1], 0, 4), 'income' => $inc, 'expense' => $exp];
 
-            $paidUpTo = (int) Payment::where('payment_date', '<', $e)->sum('amount');
-            $expUpTo = (int) Expense::where('expense_date', '<', $e)->sum('amount');
-            $trend[] = $paidUpTo - $expUpTo;
+            $inUpTo = (int) Payment::whereIn('type', ['charge', 'unit_cost'])->where('payment_date', '<', $e)->sum('amount');
+            $outUpTo = (int) Payment::where('type', 'fund_cost')->where('payment_date', '<', $e)->sum('amount');
+            $trend[] = $inUpTo - $outUpTo;
         }
 
         $debtors = $units->filter(fn ($u) => $u->balance > 0)

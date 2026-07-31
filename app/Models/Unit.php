@@ -68,12 +68,33 @@ class Unit extends Model
         return $this->hasMany(Payment::class);
     }
 
+    /**
+     * Debt owed to the fund: charge/cost debits minus settlement payments.
+     * Standalone creditor balances are tracked separately (see creditBalance)
+     * and only reduce debt when explicitly applied.
+     */
     public function getBalanceAttribute(): int
     {
-        $debits = $this->ledgerTransactions()->where('direction', 'debit')->sum('amount');
-        $credits = $this->ledgerTransactions()->where('direction', 'credit')->sum('amount');
+        $debits = $this->ledgerTransactions()->where('direction', 'debit')
+            ->whereIn('type', ['charge', 'cost', 'expense'])->sum('amount');
+        $payments = $this->ledgerTransactions()->where('direction', 'credit')
+            ->where('type', 'payment')->sum('amount');
 
-        return (int) ($debits - $credits);
+        return (int) ($debits - $payments);
+    }
+
+    /**
+     * Standing credit the fund owes this unit (money it fronted), not yet
+     * applied to its debt.
+     */
+    public function getCreditBalanceAttribute(): int
+    {
+        $credits = $this->ledgerTransactions()->where('direction', 'credit')
+            ->where('type', 'credit')->sum('amount');
+        $used = $this->ledgerTransactions()->where('direction', 'debit')
+            ->where('type', 'credit_used')->sum('amount');
+
+        return (int) ($credits - $used);
     }
 
     public function getActiveResidentCountAttribute(): int

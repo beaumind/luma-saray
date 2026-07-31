@@ -15,6 +15,8 @@ class Payment extends Model
         'organization_id',
         'unit_id',
         'building_id',
+        'type',
+        'expense_id',
         'created_by',
         'amount',
         'payment_date',
@@ -31,6 +33,11 @@ class Payment extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(Expense::class);
     }
 
     public function building(): BelongsTo

@@ -61,4 +61,22 @@ class LedgerService
     {
         return $this->record($unit, 'expense', $amount, 'debit', $description, $date, 'expense', $expenseId);
     }
+
+    /** A unit's share of a distributed cost — increases its debt. */
+    public function recordCost(Unit $unit, int $amount, string $description, string $date, int $expenseId): LedgerTransaction
+    {
+        return $this->record($unit, 'cost', $amount, 'debit', $description, $date, 'expense', $expenseId);
+    }
+
+    /** A standing credit (unit fronted money) — does NOT reduce debt until applied. */
+    public function recordCredit(Unit $unit, int $amount, string $description, string $date, ?int $expenseId = null): LedgerTransaction
+    {
+        return $this->record($unit, 'credit', $amount, 'credit', $description, $date, 'expense', $expenseId);
+    }
+
+    /** Consumes standing credit when it is applied against debt. */
+    public function recordCreditUsed(Unit $unit, int $amount, string $description, string $date): LedgerTransaction
+    {
+        return $this->record($unit, 'credit_used', $amount, 'debit', $description, $date);
+    }
 }
