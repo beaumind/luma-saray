@@ -16,6 +16,7 @@
     "dependencies": {
         "@majidh1/jalalidatepicker": "^1.0.0",
         "axios": "^1.18.1",
-        "html2canvas": "^1.4.1"
+        "html2canvas": "^1.4.1",
+        "jalaali-js": "^2.0.0"
     }
 }

@@ -161,7 +161,9 @@ class Index extends Component
             ->when($this->type_filter, fn ($q) => $q->where('type', $this->type_filter))
             ->when($this->building_id, fn ($q) => $q->whereHas('unit', fn ($uq) => $uq->where('building_id', $this->building_id)))
             ->where('is_active', true)
-            ->orderBy('name')
+            // Group by unit (natural number order) so a unit's owner + tenant sit together.
+            ->orderBy(Unit::select('number')->whereColumn('units.id', 'residents.unit_id'))
+            ->orderByRaw("CASE type WHEN 'owner' THEN 0 ELSE 1 END")
             ->paginate(15);
 
         $buildings = Building::where('is_active', true)->get();

@@ -91,8 +91,8 @@
                 </label>
             </div>
             <div class="flex gap-2.5">
-                <div class="flex-1"><x-input wire:model="fixed_amount" label="مبلغ ثابت" type="number" /></div>
-                <div class="flex-1"><x-input wire:model="per_resident_amount" label="مبلغ هر نفر" type="number" /></div>
+                <div class="flex-1"><x-money-input wire:model="fixed_amount" label="مبلغ ثابت ({{ \App\Support\Fmt::currency() }})" /></div>
+                <div class="flex-1"><x-money-input wire:model="per_resident_amount" label="مبلغ هر نفر" /></div>
             </div>
             <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره قالب</button>
         </form>

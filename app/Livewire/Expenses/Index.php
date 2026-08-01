@@ -26,6 +26,8 @@ class Index extends Component
 
     public bool $showModal = false;
 
+    public ?int $editingId = null;
+
     public string $building_id = '';
 
     public string $expense_category_id = '';
@@ -60,7 +62,25 @@ class Index extends Component
     public function openCreate(): void
     {
         $this->resetForm();
+        $this->editingId = null;
         $this->expense_date = JDate::today();
+        $this->showModal = true;
+    }
+
+    public function openEdit(int $id): void
+    {
+        $this->resetForm();
+        $e = Expense::with('expenseUnits')->findOrFail($id);
+        $this->editingId = $e->id;
+        $this->building_id = (string) $e->building_id;
+        $this->expense_category_id = (string) ($e->expense_category_id ?? '');
+        $this->title = $e->title;
+        $this->amount = (string) Fmt::display((int) $e->amount);
+        $this->expense_date = JDate::toJalali($e->expense_date);
+        $this->description = $e->description ?? '';
+        $this->distribution = in_array($e->distribution, ['fund', 'all_units', 'single_unit']) ? $e->distribution : 'fund';
+        $this->single_unit_id = (string) ($e->expenseUnits->first()->unit_id ?? '');
+        $this->responsible = $e->responsible ?? 'owner';
         $this->showModal = true;
     }
 
@@ -77,12 +97,14 @@ class Index extends Component
             'image' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
 
-        $attachments = null;
+        $building = Building::find($this->building_id);
+
+        $attachments = $this->editingId ? Expense::find($this->editingId)?->attachments : null;
         if ($this->image) {
             $attachments = [$this->image->store('expenses', 'public')];
         }
 
-        $service->createAndDistribute([
+        $data = [
             'expense_category_id' => $this->expense_category_id ?: null,
             'title' => $this->title,
             'amount' => Fmt::toRial($this->amount),
@@ -92,15 +114,22 @@ class Index extends Component
             'responsible' => $this->responsible,
             'unit_ids' => $this->distribution === 'single_unit' ? [(int) $this->single_unit_id] : [],
             'attachments' => $attachments,
-        ], Building::find($this->building_id));
+        ];
+
+        if ($this->editingId) {
+            $service->updateAndRedistribute(Expense::findOrFail($this->editingId), $data, $building);
+        } else {
+            $service->createAndDistribute($data, $building);
+        }
 
         $this->showModal = false;
         $this->resetForm();
-        session()->flash('success', 'هزینه ثبت شد.');
+        session()->flash('success', 'هزینه ذخیره شد.');
     }
 
     private function resetForm(): void
     {
+        $this->editingId = null;
         $this->building_id = $this->building_id_filter;
         $this->expense_category_id = '';
         $this->title = '';

@@ -91,7 +91,7 @@
     {{-- Payment sheet --}}
     <x-sheet model="showPaymentModal" title="ثبت پرداخت">
         <form wire:submit="savePayment" class="flex flex-col gap-[13px]">
-            <x-input wire:model="pay_amount" label="مبلغ ({{ \App\Support\Fmt::currency() }})" type="number" />
+            <x-money-input wire:model="pay_amount" label="مبلغ ({{ \App\Support\Fmt::currency() }})" />
             <div class="flex gap-2.5">
                 <div class="flex-1"><x-jalali-date-input wire:model="pay_date" label="تاریخ" /></div>
                 <div class="flex-1"><x-input wire:model="pay_tracking" label="شماره پیگیری" /></div>

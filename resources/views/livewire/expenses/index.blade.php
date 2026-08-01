@@ -16,14 +16,14 @@
                     $col = $e->category->color ?? '#5b5bd6';
                     $dist = ['fund' => 'از صندوق', 'all_units' => 'همه واحدها', 'single_unit' => 'یک واحد', 'selected_units' => 'واحدهای منتخب'][$e->distribution] ?? $e->distribution;
                 @endphp
-                <div class="flex items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px]">
+                <button wire:click="openEdit({{ $e->id }})" type="button" class="flex w-full items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px] text-right">
                     <div class="flex h-10 w-10 flex-none items-center justify-center rounded-[11px] text-[15px] font-bold" style="background:{{ $col }}1a;color:{{ $col }}">{{ mb_substr($e->category->name ?? 'ه', 0, 1) }}</div>
                     <div class="min-w-0 flex-1">
                         <div class="truncate text-[13.5px] font-bold text-[#18181b]">{{ $e->title }}</div>
                         <div class="text-[11.5px] text-[#a1a1aa]">{{ $e->category->name ?? 'بدون دسته' }} · <x-jdate :value="$e->expense_date" /> · {{ $dist }}</div>
                     </div>
                     <div class="text-[13.5px] font-bold text-[#dc2626]">{{ Fmt::money($e->amount) }}</div>
-                </div>
+                </button>
             @empty
                 <div class="rounded-[14px] border border-[#ececef] bg-white px-4 py-10 text-center text-[13px] text-[#a1a1aa]">هزینه‌ای ثبت نشده است</div>
             @endforelse
@@ -31,11 +31,11 @@
         @if($expenses->hasPages())<div class="mt-4">{{ $expenses->links() }}</div>@endif
     </div>
 
-    <x-sheet model="showModal" title="ثبت هزینهٔ جدید">
+    <x-sheet model="showModal" :title="$editingId ? 'ویرایش هزینه' : 'ثبت هزینهٔ جدید'">
         <form wire:submit="save" class="flex flex-col gap-3">
             <x-input wire:model="title" label="عنوان هزینه" />
             <div class="flex gap-2.5">
-                <div class="flex-1"><x-input wire:model="amount" label="مبلغ ({{ \App\Support\Fmt::currency() }})" type="number" /></div>
+                <div class="flex-1"><x-money-input wire:model="amount" label="مبلغ ({{ \App\Support\Fmt::currency() }})" /></div>
                 <div class="flex-1"><x-jalali-date-input wire:model="expense_date" label="تاریخ" /></div>
             </div>
 

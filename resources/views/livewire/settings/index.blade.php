@@ -56,8 +56,12 @@
             @forelse($buildings as $b)
                 <div class="flex items-center gap-2.5 border-b border-[#f7f7f8] px-[15px] py-3">
                     <span class="flex-1 truncate text-[13px] font-semibold text-[#18181b]">{{ $b->name }}</span>
-                    <input type="number" wire:model="opening.{{ $b->id }}"
-                           class="h-10 w-[130px] rounded-[10px] border border-[#e4e4e7] bg-[#fafafa] px-2.5 text-left text-[13px] outline-none focus:border-[#5b5bd6]">
+                    <div class="w-[130px]" x-data="{ raw: @entangle('opening.'.$b->id) }">
+                        <input type="text" inputmode="numeric" dir="ltr"
+                               x-effect="if (document.activeElement !== $el) $el.value = (raw !== '' && raw != null) ? Number(String(raw).replace(/[^0-9]/g,'')||0).toLocaleString('en-US') : ''"
+                               @input="raw = $el.value.replace(/[^0-9]/g,''); $el.value = raw ? Number(raw).toLocaleString('en-US') : ''"
+                               class="h-10 w-full rounded-[10px] border border-[#e4e4e7] bg-[#fafafa] px-2.5 text-left text-[13px] outline-none focus:border-[#5b5bd6]">
+                    </div>
                     <button wire:click="saveOpening({{ $b->id }})" type="button" class="rounded-[9px] bg-[#eef0fb] px-3 py-2 text-[12px] font-bold text-[#5b5bd6]">ذخیره</button>
                 </div>
             @empty
