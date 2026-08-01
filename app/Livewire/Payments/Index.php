@@ -4,6 +4,7 @@ namespace App\Livewire\Payments;
 
 use App\Models\Building;
 use App\Models\Expense;
+use App\Models\ExpenseUnit;
 use App\Models\Payment;
 use App\Models\Unit;
 use App\Rules\JalaliDate;
@@ -25,6 +26,10 @@ class Index extends Component
     public string $search = '';
 
     public bool $showModal = false;
+
+    public bool $showDetail = false;
+
+    public ?int $detailId = null;
 
     /** charge | fund_cost | unit_cost | unit_credit */
     public string $type = 'charge';
@@ -53,6 +58,41 @@ class Index extends Component
         $this->resetForm();
         $this->payment_date = JDate::today();
         $this->showModal = true;
+    }
+
+    public function openDetail(int $id): void
+    {
+        $this->detailId = $id;
+        $this->showDetail = true;
+    }
+
+    /** Prefill the amount from the selected cost. */
+    public function updatedExpenseId($value): void
+    {
+        $this->prefillAmount();
+    }
+
+    public function updatedUnitId(): void
+    {
+        if ($this->type === 'unit_cost') {
+            $this->prefillAmount();
+        }
+    }
+
+    private function prefillAmount(): void
+    {
+        $expense = $this->expense_id ? Expense::find((int) $this->expense_id) : null;
+        if (! $expense) {
+            return;
+        }
+
+        if ($this->type === 'fund_cost') {
+            $this->amount = (string) Fmt::display((int) $expense->amount);
+        } elseif ($this->type === 'unit_cost' && $this->unit_id) {
+            $share = ExpenseUnit::where('expense_id', $expense->id)
+                ->where('unit_id', (int) $this->unit_id)->value('amount');
+            $this->amount = (string) Fmt::display((int) ($share ?: $expense->amount));
+        }
     }
 
     public function save(PaymentService $service): void
@@ -122,7 +162,8 @@ class Index extends Component
         $units = Unit::with('building')->where('is_active', true)
             ->orderBy('building_id')->orderByRaw('LENGTH(number)')->orderBy('number')->get();
         $expenses = Expense::with('building')->orderByDesc('expense_date')->orderByDesc('id')->limit(200)->get();
+        $detailPayment = $this->detailId ? Payment::with(['unit.building', 'expense', 'creator'])->find($this->detailId) : null;
 
-        return view('livewire.payments.index', compact('payments', 'buildings', 'units', 'expenses'));
+        return view('livewire.payments.index', compact('payments', 'buildings', 'units', 'expenses', 'detailPayment'));
     }
 }

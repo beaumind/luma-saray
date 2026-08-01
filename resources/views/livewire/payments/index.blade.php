@@ -31,14 +31,14 @@
                         };
                         $outflow = $p->type === 'fund_cost';
                     @endphp
-                    <div class="flex items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px]">
+                    <button wire:click="openDetail({{ $p->id }})" type="button" class="flex w-full items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px] text-right">
                         <div class="flex h-10 w-10 flex-none items-center justify-center rounded-[11px] text-[17px]" style="background:{{ $meta[1] }};color:{{ $meta[2] }}">{{ $meta[0] }}</div>
                         <div class="min-w-0 flex-1">
                             <div class="truncate text-[13.5px] font-bold text-[#18181b]">{{ $meta[3] }}</div>
                             <div class="truncate text-[11.5px] text-[#a1a1aa]"><x-jdate :value="$p->payment_date" />@if($meta[4]) · {{ $meta[4] }}@endif</div>
                         </div>
                         <div class="text-[14px] font-extrabold" style="color:{{ $meta[2] }}">{{ $outflow ? '−' : '+' }}{{ Fmt::money($p->amount) }}</div>
-                    </div>
+                    </button>
                 @endforeach
             </div>
             @if($payments->hasPages())<div class="mt-4">{{ $payments->links() }}</div>@endif
@@ -78,7 +78,7 @@
             @if($type !== 'fund_cost')
                 <label class="flex flex-col gap-1.5">
                     <span class="text-[12.5px] font-semibold text-[#3f3f46]">واحد</span>
-                    <select wire:model="unit_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                    <select wire:model.live="unit_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
                         <option value="">انتخاب واحد…</option>
                         @foreach($units as $u)<option value="{{ $u->id }}">واحد {{ Fmt::fa($u->number) }} — {{ $u->building->name }}</option>@endforeach
                     </select>
@@ -90,7 +90,7 @@
             @if($type !== 'charge')
                 <label class="flex flex-col gap-1.5">
                     <span class="text-[12.5px] font-semibold text-[#3f3f46]">هزینهٔ مرتبط</span>
-                    <select wire:model="expense_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                    <select wire:model.live="expense_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
                         <option value="">انتخاب هزینه…</option>
                         @foreach($expenses as $ex)<option value="{{ $ex->id }}">{{ $ex->title }} — {{ Fmt::money($ex->amount) }}</option>@endforeach
                     </select>
@@ -114,5 +114,44 @@
 
             <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</button>
         </form>
+    </x-sheet>
+
+    {{-- Payment detail --}}
+    <x-sheet model="showDetail" title="جزئیات پرداخت">
+        @if($detailPayment)
+            @php
+                $typeLabel = ['charge' => 'پرداخت شارژ', 'fund_cost' => 'پرداخت هزینه از صندوق', 'unit_cost' => 'پرداخت هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'][$detailPayment->type] ?? $detailPayment->type;
+            @endphp
+            <div class="flex flex-col gap-3">
+                <div class="rounded-[14px] bg-[#f7f7f8] p-3.5 text-center">
+                    <div class="text-[12px] text-[#71717a]">{{ $typeLabel }}</div>
+                    <div class="mt-1 text-[24px] font-extrabold text-[#18181b]">{{ Fmt::money($detailPayment->amount) }} <span class="text-[13px] font-semibold text-[#71717a]">{{ Fmt::currency() }}</span></div>
+                </div>
+                @php
+                    $rows = array_filter([
+                        $detailPayment->unit ? ['واحد', 'واحد '.Fmt::fa($detailPayment->unit->number).' — '.$detailPayment->unit->building?->name] : null,
+                        $detailPayment->expense ? ['هزینهٔ مرتبط', $detailPayment->expense->title] : null,
+                        ['تاریخ', \App\Support\JDate::toJalali($detailPayment->payment_date)],
+                        $detailPayment->tracking_number ? ['شماره پیگیری', Fmt::fa($detailPayment->tracking_number)] : null,
+                        $detailPayment->notes ? ['توضیحات', $detailPayment->notes] : null,
+                    ]);
+                @endphp
+                @foreach($rows as [$k, $v])
+                    <div class="flex justify-between border-b border-[#f4f4f5] pb-2.5 text-[13px]">
+                        <span class="text-[#71717a]">{{ $k }}</span>
+                        <span class="font-semibold text-[#18181b]">{{ $v }}</span>
+                    </div>
+                @endforeach
+                @if($detailPayment->receipt_path)
+                    <div>
+                        <div class="mb-1.5 text-[12.5px] font-semibold text-[#3f3f46]">رسید پرداخت</div>
+                        <a href="{{ \Illuminate\Support\Facades\Storage::url($detailPayment->receipt_path) }}" target="_blank">
+                            <img src="{{ \Illuminate\Support\Facades\Storage::url($detailPayment->receipt_path) }}" alt="رسید"
+                                 class="max-h-[280px] w-full rounded-[12px] border border-[#ececef] object-contain" onerror="this.style.display='none'">
+                        </a>
+                    </div>
+                @endif
+            </div>
+        @endif
     </x-sheet>
 </div>

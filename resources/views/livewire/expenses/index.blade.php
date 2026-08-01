@@ -16,7 +16,7 @@
                     $col = $e->category->color ?? '#5b5bd6';
                     $dist = ['fund' => 'از صندوق', 'all_units' => 'همه واحدها', 'single_unit' => 'یک واحد', 'selected_units' => 'واحدهای منتخب'][$e->distribution] ?? $e->distribution;
                 @endphp
-                <button wire:click="openEdit({{ $e->id }})" type="button" class="flex w-full items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px] text-right">
+                <button wire:click="openDetail({{ $e->id }})" type="button" class="flex w-full items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px] text-right">
                     <div class="flex h-10 w-10 flex-none items-center justify-center rounded-[11px] text-[15px] font-bold" style="background:{{ $col }}1a;color:{{ $col }}">{{ mb_substr($e->category->name ?? 'ه', 0, 1) }}</div>
                     <div class="min-w-0 flex-1">
                         <div class="truncate text-[13.5px] font-bold text-[#18181b]">{{ $e->title }}</div>
@@ -115,5 +115,68 @@
             <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت هزینه</button>
             <p class="text-center text-[11px] text-[#a1a1aa]">پرداخت این هزینه را از بخش «پرداخت‌ها» ثبت کنید.</p>
         </form>
+    </x-sheet>
+
+    {{-- Cost detail --}}
+    <x-sheet model="showDetail" title="جزئیات هزینه">
+        @if($detailExpense)
+            @php
+                $distLabel = ['fund' => 'از صندوق', 'all_units' => 'تقسیم بین همهٔ واحدها', 'single_unit' => 'یک واحد', 'selected_units' => 'واحدهای منتخب'][$detailExpense->distribution] ?? $detailExpense->distribution;
+                $respLabel = ['owner' => 'مالک', 'tenant' => 'مستأجر', 'both' => 'هردو'][$detailExpense->responsible] ?? null;
+            @endphp
+            <div class="flex flex-col gap-3">
+                <div class="rounded-[14px] bg-[#f7f7f8] p-3.5 text-center">
+                    <div class="text-[12px] text-[#71717a]">{{ $detailExpense->title }}</div>
+                    <div class="mt-1 text-[24px] font-extrabold text-[#dc2626]">{{ Fmt::money($detailExpense->amount) }} <span class="text-[13px] font-semibold text-[#71717a]">{{ Fmt::currency() }}</span></div>
+                </div>
+                @php
+                    $rows = array_filter([
+                        ['ساختمان', $detailExpense->building?->name],
+                        $detailExpense->category ? ['دسته‌بندی', $detailExpense->category->name] : null,
+                        ['تاریخ', \App\Support\JDate::toJalali($detailExpense->expense_date)],
+                        ['تقسیم هزینه', $distLabel],
+                        $detailExpense->distribution !== 'fund' && $respLabel ? ['مسئول پرداخت', $respLabel] : null,
+                        $detailExpense->description ? ['توضیحات', $detailExpense->description] : null,
+                    ]);
+                @endphp
+                @foreach($rows as [$k, $v])
+                    <div class="flex justify-between border-b border-[#f4f4f5] pb-2.5 text-[13px]">
+                        <span class="text-[#71717a]">{{ $k }}</span>
+                        <span class="font-semibold text-[#18181b]">{{ $v }}</span>
+                    </div>
+                @endforeach
+
+                @if($detailExpense->distribution !== 'fund' && $detailExpense->expenseUnits->isNotEmpty())
+                    <div>
+                        <div class="mb-1.5 text-[12.5px] font-semibold text-[#3f3f46]">سهم واحدها</div>
+                        <div class="flex flex-col gap-1.5">
+                            @foreach($detailExpense->expenseUnits as $eu)
+                                <div class="flex justify-between rounded-[10px] bg-[#fafafa] px-3 py-2 text-[12.5px]">
+                                    <span class="text-[#3f3f46]">واحد {{ Fmt::fa($eu->unit?->number) }}</span>
+                                    <span class="font-semibold text-[#18181b]">{{ Fmt::money($eu->amount) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                @if(!empty($detailExpense->attachments))
+                    <div>
+                        <div class="mb-1.5 text-[12.5px] font-semibold text-[#3f3f46]">فاکتور / ضمیمه</div>
+                        <div class="flex flex-col gap-2">
+                            @foreach($detailExpense->attachments as $att)
+                                <a href="{{ \Illuminate\Support\Facades\Storage::url($att) }}" target="_blank">
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::url($att) }}" alt="فاکتور"
+                                         class="max-h-[280px] w-full rounded-[12px] border border-[#ececef] object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                                    <span style="display:none" class="block rounded-[10px] bg-[#eef0fb] px-3 py-2 text-center text-[12.5px] text-[#5b5bd6]">باز کردن فایل ضمیمه</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <button type="button" wire:click="editFromDetail" class="mt-1 h-[48px] rounded-[13px] border-[1.5px] border-[#5b5bd6] text-[14px] font-bold text-[#5b5bd6]">ویرایش هزینه</button>
+            </div>
+        @endif
     </x-sheet>
 </div>

@@ -50,6 +50,10 @@ tolerations: []
 
 affinity: {}
 
+uploads:
+  size: 2Gi
+  storageClass: local-path
+
 redis:
   enabled: true
   image: docker.arvancloud.ir/redis:7-alpine

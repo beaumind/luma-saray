@@ -26,6 +26,10 @@ class Index extends Component
 
     public bool $showModal = false;
 
+    public bool $showDetail = false;
+
+    public ?int $detailId = null;
+
     public ?int $editingId = null;
 
     public string $building_id = '';
@@ -65,6 +69,21 @@ class Index extends Component
         $this->editingId = null;
         $this->expense_date = JDate::today();
         $this->showModal = true;
+    }
+
+    public function openDetail(int $id): void
+    {
+        $this->detailId = $id;
+        $this->showDetail = true;
+    }
+
+    public function editFromDetail(): void
+    {
+        $id = $this->detailId;
+        $this->showDetail = false;
+        if ($id) {
+            $this->openEdit($id);
+        }
     }
 
     public function openEdit(int $id): void
@@ -158,6 +177,8 @@ class Index extends Component
                 ->orderByRaw('LENGTH(number)')->orderBy('number')->get()
             : collect();
 
-        return view('livewire.expenses.index', compact('expenses', 'buildings', 'categories', 'units'));
+        $detailExpense = $this->detailId ? Expense::with(['building', 'category', 'creator', 'expenseUnits.unit'])->find($this->detailId) : null;
+
+        return view('livewire.expenses.index', compact('expenses', 'buildings', 'categories', 'units', 'detailExpense'));
     }
 }

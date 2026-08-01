@@ -35,6 +35,10 @@ spec:
         # Writable session storage (SESSION_DRIVER=file requires write access)
         - name: sessions
           emptyDir: {}
+        # Persistent, shared uploads (receipts / invoice images) — public disk
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ template "app.fullname" . }}-uploads
 
       initContainers:
         - name: artisan-migrate
@@ -50,6 +54,11 @@ spec:
               cd /var/www/html && CACHE_STORE=array php artisan migrate --force
               echo "Seeding admin user and roles..."
               cd /var/www/html && CACHE_STORE=array php artisan db:seed --class=AdminSeeder --force
+              echo "Linking public storage..."
+              cd /var/www/html && php artisan storage:link --force || true
+          volumeMounts:
+            - name: uploads
+              mountPath: /var/www/html/storage/app/public
 
       containers:
         - name: {{ .Chart.Name }}-nginx
@@ -63,6 +72,8 @@ spec:
               mountPath: /etc/nginx/conf.d
             - name: source-code
               mountPath: /var/www/html/
+            - name: uploads
+              mountPath: /var/www/html/storage/app/public
 
         - name: {{ .Chart.Name }}-phpfpm
           image: "{{ .Values.image.php.repository }}:{{ .Values.image.php.tag }}"
@@ -83,3 +94,5 @@ spec:
               mountPath: /laravel
             - name: sessions
               mountPath: /var/www/html/storage/framework/sessions
+            - name: uploads
+              mountPath: /var/www/html/storage/app/public

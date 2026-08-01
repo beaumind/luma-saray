@@ -32,3 +32,6 @@ RUN chmod -R 777 /var/www/html/storage && \
     mkdir -p /.composer/cache/files && chmod -R 777 /.composer/cache/files
 
 RUN composer install --no-dev --no-cache --prefer-dist --optimize-autoloader
+
+# Ship the public storage symlink so it survives the copy into the shared volume.
+RUN ln -sfn ../storage/app/public /var/www/html/public/storage

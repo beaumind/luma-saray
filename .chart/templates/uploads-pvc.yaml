@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ template "app.fullname" . }}-uploads
+  labels:
+    app: {{ template "app.name" . }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.uploads.size | default "2Gi" }}
+  {{- with .Values.uploads.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
