@@ -1,8 +1,8 @@
 @php
     use App\Support\Fmt;
-    if ($balance > 0) { $balColor = '#dc2626'; $balBg = '#fdeded'; $balState = 'بدهکار'; $balLabel = Fmt::money($balance).' ریال'; }
-    elseif ($balance < 0) { $balColor = '#16a34a'; $balBg = '#e9f7ef'; $balState = 'بستانکار'; $balLabel = Fmt::money($balance).' ریال'; }
-    else { $balColor = '#71717a'; $balBg = '#f4f4f5'; $balState = 'تسویه'; $balLabel = '۰ ریال'; }
+    if ($balance > 0) { $balColor = '#dc2626'; $balBg = '#fdeded'; $balState = 'بدهکار'; $balLabel = Fmt::money($balance).' '.Fmt::currency(); }
+    elseif ($balance < 0) { $balColor = '#16a34a'; $balBg = '#e9f7ef'; $balState = 'بستانکار'; $balLabel = Fmt::money($balance).' '.Fmt::currency(); }
+    else { $balColor = '#71717a'; $balBg = '#f4f4f5'; $balState = 'تسویه'; $balLabel = '۰ '.Fmt::currency(); }
     $occupied = $residents->isNotEmpty();
 @endphp
 <div>
@@ -31,7 +31,7 @@
                 <div class="mt-3 flex items-center justify-between rounded-[12px] bg-[#eef0fb] px-3 py-2.5">
                     <div>
                         <div class="text-[11.5px] text-[#5b5bd6]">بستانکاری واحد (پرداختی بابت صندوق)</div>
-                        <div class="mt-0.5 text-[16px] font-extrabold text-[#5b5bd6]">{{ Fmt::money($creditBalance) }} ریال</div>
+                        <div class="mt-0.5 text-[16px] font-extrabold text-[#5b5bd6]">{{ Fmt::money($creditBalance) }} {{ Fmt::currency() }}</div>
                     </div>
                     @if($balance > 0)
                         <button wire:click="applyCredit" wire:confirm="بستانکاری این واحد بر بدهی‌اش اعمال شود؟" type="button"
@@ -91,7 +91,7 @@
     {{-- Payment sheet --}}
     <x-sheet model="showPaymentModal" title="ثبت پرداخت">
         <form wire:submit="savePayment" class="flex flex-col gap-[13px]">
-            <x-input wire:model="pay_amount" label="مبلغ (ریال)" type="number" />
+            <x-input wire:model="pay_amount" label="مبلغ ({{ \App\Support\Fmt::currency() }})" type="number" />
             <div class="flex gap-2.5">
                 <div class="flex-1"><x-jalali-date-input wire:model="pay_date" label="تاریخ" /></div>
                 <div class="flex-1"><x-input wire:model="pay_tracking" label="شماره پیگیری" /></div>

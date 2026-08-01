@@ -35,7 +35,7 @@
         <form wire:submit="save" class="flex flex-col gap-3">
             <x-input wire:model="title" label="عنوان هزینه" />
             <div class="flex gap-2.5">
-                <div class="flex-1"><x-input wire:model="amount" label="مبلغ (ریال)" type="number" /></div>
+                <div class="flex-1"><x-input wire:model="amount" label="مبلغ ({{ \App\Support\Fmt::currency() }})" type="number" /></div>
                 <div class="flex-1"><x-jalali-date-input wire:model="expense_date" label="تاریخ" /></div>
             </div>
 

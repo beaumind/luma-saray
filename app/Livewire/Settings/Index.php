@@ -2,14 +2,19 @@
 
 namespace App\Livewire\Settings;
 
+use App\Models\Building;
 use App\Models\ExpenseCategory;
+use App\Support\Fmt;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 #[Layout('layouts.app', ['title' => 'تنظیمات'])]
 class Index extends Component
 {
-    public string $tab = 'categories';
+    public string $currency = 'toman';
+
+    /** building_id => opening balance in the display currency */
+    public array $opening = [];
 
     // Category form
     public bool $showCategoryModal = false;
@@ -19,6 +24,36 @@ class Index extends Component
     public string $cat_name = '';
 
     public string $cat_color = '#6366f1';
+
+    public function mount(): void
+    {
+        $this->currency = auth()->user()->organization->currency ?? 'toman';
+        foreach (Building::all() as $b) {
+            $this->opening[$b->id] = (string) Fmt::display((int) $b->opening_balance);
+        }
+    }
+
+    public function setCurrency(string $currency): void
+    {
+        if (! in_array($currency, ['toman', 'rial'])) {
+            return;
+        }
+        auth()->user()->organization->update(['currency' => $currency]);
+        $this->currency = $currency;
+        Fmt::$override = $currency;
+        foreach (Building::all() as $b) {
+            $this->opening[$b->id] = (string) Fmt::display((int) $b->opening_balance);
+        }
+        session()->flash('success', 'واحد پول تغییر کرد.');
+    }
+
+    public function saveOpening(int $buildingId): void
+    {
+        Fmt::$override = $this->currency;
+        $building = Building::findOrFail($buildingId);
+        $building->update(['opening_balance' => Fmt::toRial($this->opening[$buildingId] ?? 0)]);
+        session()->flash('success', 'موجودی اولیهٔ صندوق ذخیره شد.');
+    }
 
     public function openCategoryCreate(): void
     {
@@ -64,8 +99,9 @@ class Index extends Component
 
     public function render()
     {
-        $categories = ExpenseCategory::orderBy('name')->get();
-
-        return view('livewire.settings.index', compact('categories'));
+        return view('livewire.settings.index', [
+            'categories' => ExpenseCategory::orderBy('name')->get(),
+            'buildings' => Building::orderBy('name')->get(),
+        ]);
     }
 }

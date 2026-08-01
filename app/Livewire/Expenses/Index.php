@@ -8,6 +8,7 @@ use App\Models\ExpenseCategory;
 use App\Models\Unit;
 use App\Rules\JalaliDate;
 use App\Services\ExpenseService;
+use App\Support\Fmt;
 use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -84,7 +85,7 @@ class Index extends Component
         $service->createAndDistribute([
             'expense_category_id' => $this->expense_category_id ?: null,
             'title' => $this->title,
-            'amount' => (int) $this->amount,
+            'amount' => Fmt::toRial($this->amount),
             'expense_date' => JDate::toGregorian($this->expense_date),
             'description' => $this->description ?: null,
             'distribution' => $this->distribution,

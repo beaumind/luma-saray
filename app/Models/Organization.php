@@ -10,6 +10,7 @@ class Organization extends Model
     protected $fillable = [
         'name',
         'slug',
+        'currency',
         'is_active',
     ];
 

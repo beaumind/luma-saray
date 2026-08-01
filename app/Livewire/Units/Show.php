@@ -6,6 +6,7 @@ use App\Models\LedgerTransaction;
 use App\Models\Unit;
 use App\Rules\JalaliDate;
 use App\Services\PaymentService;
+use App\Support\Fmt;
 use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -62,7 +63,7 @@ class Show extends Component
         }
 
         $service->register($this->unit, [
-            'amount' => (int) $this->pay_amount,
+            'amount' => Fmt::toRial($this->pay_amount),
             'payment_date' => JDate::toGregorian($this->pay_date),
             'tracking_number' => $this->pay_tracking ?: null,
             'notes' => $this->pay_notes ?: null,

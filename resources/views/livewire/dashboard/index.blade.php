@@ -8,7 +8,7 @@
         <div class="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-[#5b5bd6] to-[#7c6df2] px-[18px] pb-4 pt-[18px] text-white shadow-[0_16px_30px_-14px_rgba(91,91,214,.6)]">
             <div class="absolute -left-8 -top-8 h-[120px] w-[120px] rounded-full bg-white/10"></div>
             <div class="text-[12.5px] font-medium opacity-85">موجودی حساب ساختمان</div>
-            <div class="mt-1.5 text-[29px] font-extrabold tracking-tight">{{ Fmt::money($balance) }} <span class="text-[14px] font-semibold opacity-80">ریال</span></div>
+            <div class="mt-1.5 text-[29px] font-extrabold tracking-tight">{{ Fmt::money($balance) }} <span class="text-[14px] font-semibold opacity-80">{{ \App\Support\Fmt::currency() }}</span></div>
             <div class="mt-3.5 flex gap-2">
                 <div class="flex-1 rounded-[11px] bg-white/15 px-[11px] py-[9px]">
                     <div class="text-[11px] opacity-85">مطالبات معوق</div>

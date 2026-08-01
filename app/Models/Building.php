@@ -22,12 +22,14 @@ class Building extends Model
         'manager_name',
         'manager_mobile',
         'is_active',
+        'opening_balance',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'total_units' => 'integer',
         'floors' => 'integer',
+        'opening_balance' => 'integer',
     ];
 
     public function units(): HasMany

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\DebtMatrix;
+use App\Support\Fmt;
 use Illuminate\Http\Request;
 use Mpdf\Mpdf;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -45,16 +46,18 @@ class ReportExportController extends Controller
     {
         $key = $col['key'];
 
+        $money = fn ($rial) => number_format(Fmt::display((int) $rial));
+
         return match (true) {
             $key === 'number' => (string) $row['number'],
             $key === 'resident' => $row['resident'],
             $key === 'owner' => $row['owner'],
             $key === 'count' => (string) $row['count'],
-            $key === 'monthly_charge' => number_format($row['monthly_charge']),
-            $key === 'past_debt' => $row['past_debt'] ? number_format($row['past_debt']) : '0',
-            $key === 'total_debt' => $row['total_debt'] ? number_format($row['total_debt']) : '0',
+            $key === 'monthly_charge' => $money($row['monthly_charge']),
+            $key === 'past_debt' => $money($row['past_debt']),
+            $key === 'total_debt' => $money($row['total_debt']),
             $key === 'notes' => $row['notes'],
-            str_starts_with($key, 'month_') => number_format($row['months'][$col['month']]['value']),
+            str_starts_with($key, 'month_') => $money($row['months'][$col['month']]['value']),
             default => '',
         };
     }

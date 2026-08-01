@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Unit;
 use App\Rules\JalaliDate;
 use App\Services\PaymentService;
+use App\Support\Fmt;
 use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -74,7 +75,7 @@ class Index extends Component
         $this->validate($rules);
 
         $data = [
-            'amount' => (int) $this->amount,
+            'amount' => Fmt::toRial($this->amount),
             'payment_date' => JDate::toGregorian($this->payment_date),
             'tracking_number' => $this->tracking_number ?: null,
             'notes' => $this->notes ?: null,

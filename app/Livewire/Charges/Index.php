@@ -6,6 +6,7 @@ use App\Models\Building;
 use App\Models\ChargeTemplate;
 use App\Rules\JalaliDate;
 use App\Services\ChargeService;
+use App\Support\Fmt;
 use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -72,8 +73,8 @@ class Index extends Component
         $this->title = $tpl->title;
         $this->type = $tpl->type;
         $this->period = $tpl->period;
-        $this->fixed_amount = (string) $tpl->fixed_amount;
-        $this->per_resident_amount = (string) $tpl->per_resident_amount;
+        $this->fixed_amount = (string) Fmt::display($tpl->fixed_amount);
+        $this->per_resident_amount = (string) Fmt::display($tpl->per_resident_amount);
         $this->description = $tpl->description ?? '';
         $this->showModal = true;
     }
@@ -116,8 +117,8 @@ class Index extends Component
             'title' => $this->title,
             'type' => $this->type,
             'period' => $this->period,
-            'fixed_amount' => (int) ($this->fixed_amount ?: 0),
-            'per_resident_amount' => (int) ($this->per_resident_amount ?: 0),
+            'fixed_amount' => Fmt::toRial($this->fixed_amount ?: 0),
+            'per_resident_amount' => Fmt::toRial($this->per_resident_amount ?: 0),
             'description' => $this->description ?: null,
         ];
 

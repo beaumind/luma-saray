@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\Building;
 use App\Models\Expense;
 use App\Models\LedgerTransaction;
 use App\Models\Payment;
@@ -18,11 +19,12 @@ class Index extends Component
     {
         $now = Jalalian::now();
 
-        // Fund cash = money in (charges + unit cost shares + deposits/reserve)
-        // minus what the fund paid out for costs.
+        // Fund cash = opening reserve + money in (charges + unit cost shares +
+        // deposits) minus what the fund paid out for costs.
+        $opening = (int) Building::where('is_active', true)->sum('opening_balance');
         $inflow = (int) Payment::whereIn('type', ['charge', 'unit_cost', 'deposit'])->sum('amount');
         $fundOut = (int) Payment::where('type', 'fund_cost')->sum('amount');
-        $balance = $inflow - $fundOut;
+        $balance = $opening + $inflow - $fundOut;
 
         [$monthStart, $monthEnd] = JDate::gregorianMonthRange((int) $now->getYear(), (int) $now->getMonth());
         $monthEndInclusive = $monthEnd->copy()->subDay();

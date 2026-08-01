@@ -35,13 +35,43 @@
             @endforelse
         </div>
 
+        {{-- Currency --}}
+        <div class="rounded-[16px] border border-[#ececef] bg-white p-[15px]">
+            <div class="mb-2.5 text-[14px] font-bold text-[#18181b]">واحد پول</div>
+            <div class="flex gap-2">
+                @foreach(['toman' => 'تومان', 'rial' => 'ریال'] as $key => $label)
+                    @php $on = $currency === $key; @endphp
+                    <button wire:click="setCurrency('{{ $key }}')" type="button"
+                            class="h-10 flex-1 rounded-[11px] border text-[13px] font-bold {{ $on ? 'border-[#5b5bd6] bg-[#5b5bd6] text-white' : 'border-[#ececef] bg-white text-[#71717a]' }}">
+                        {{ $label }}
+                    </button>
+                @endforeach
+            </div>
+            <div class="mt-2 text-[11.5px] leading-[1.7] text-[#a1a1aa]">همهٔ مبالغ در سراسر برنامه با این واحد نمایش داده می‌شوند.</div>
+        </div>
+
+        {{-- Initial fund balance --}}
+        <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
+            <div class="border-b border-[#f4f4f5] px-[15px] py-[13px] text-[14px] font-bold text-[#18181b]">موجودی اولیهٔ صندوق</div>
+            @forelse($buildings as $b)
+                <div class="flex items-center gap-2.5 border-b border-[#f7f7f8] px-[15px] py-3">
+                    <span class="flex-1 truncate text-[13px] font-semibold text-[#18181b]">{{ $b->name }}</span>
+                    <input type="number" wire:model="opening.{{ $b->id }}"
+                           class="h-10 w-[130px] rounded-[10px] border border-[#e4e4e7] bg-[#fafafa] px-2.5 text-left text-[13px] outline-none focus:border-[#5b5bd6]">
+                    <button wire:click="saveOpening({{ $b->id }})" type="button" class="rounded-[9px] bg-[#eef0fb] px-3 py-2 text-[12px] font-bold text-[#5b5bd6]">ذخیره</button>
+                </div>
+            @empty
+                <div class="px-[15px] py-6 text-center text-[12.5px] text-[#a1a1aa]">ساختمانی ثبت نشده است</div>
+            @endforelse
+            <div class="px-[15px] py-2.5 text-[11px] text-[#a1a1aa]">مبلغ به {{ \App\Support\Fmt::currency() }} — موجودی صندوق در آغاز ثبت سوابق.</div>
+        </div>
+
         {{-- Quick links --}}
         <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
             @php
                 $items = [
                     ['icon' => '◱', 'label' => 'ساختمان‌ها', 'value' => '', 'route' => 'buildings.index'],
                     ['icon' => '₪', 'label' => 'قالب‌های شارژ', 'value' => '', 'route' => 'charges.index'],
-                    ['icon' => '¤', 'label' => 'واحد پول', 'value' => 'ریال', 'route' => null],
                 ];
             @endphp
             @foreach($items as $item)
