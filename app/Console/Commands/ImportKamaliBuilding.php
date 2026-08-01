@@ -29,7 +29,23 @@ class ImportKamaliBuilding extends Command
 {
     protected $signature = 'building:import-kamali
         {--mobile=09121714525 : Admin mobile of the target organization}
-        {--building=ساختمان ۳۶ کمالی : Building name (created if missing)}';
+        {--building=ساختمان ۳۶ کمالی : Building name (created if missing)}
+        {--balance=20000000 : Real current fund balance to reconcile to (adds an opening reserve)}';
+
+    /**
+     * Costs paid by the units directly (special collection), NOT from the fund.
+     * Keyed by "jdate|title|amount".
+     */
+    private const UNIT_PAID = [
+        '1404/08/28|خرید آرام بند|17500000',
+        '1404/08/28|ارسال آرام بند|1850000',
+        '1404/08/28|نصب آرام بند|9000000',
+        '1404/09/08|سرویس آسانسور|13500000',
+        '1404/09/17|ساخت و نصب دستگیره|7500000',
+        '1404/10/15|خرید هرزگرد آسانسور|45000000',
+        '1404/10/15|ارسال هرزگرد|3500000',
+        '1404/10/26|نصب هرزگرد|75000000',
+    ];
 
     protected $description = 'Import building 36 Kamali: units, residents, charges, payments, expenses (idempotent).';
 
@@ -202,6 +218,7 @@ class ImportKamaliBuilding extends Command
             }
 
             $this->importExpenses($building->id, $orgId, $admin->id, $payments);
+            $this->addReserve($building->id, $orgId, $admin->id, (int) $this->option('balance'));
         });
 
         return $this->verify($orgId, $buildingName);
@@ -254,22 +271,51 @@ class ImportKamaliBuilding extends Command
     private function importExpenses(int $buildingId, int $orgId, int $adminId, PaymentService $payments): void
     {
         $categories = ExpenseCategory::pluck('id', 'name');
+        $unitPaid = array_flip(self::UNIT_PAID);
+
         foreach (self::EXPENSES as [$jdate, $title, $person, $amount]) {
+            $isUnitPaid = isset($unitPaid[$jdate.'|'.$title.'|'.$amount]);
+
             $expense = Expense::create([
                 'organization_id' => $orgId, 'building_id' => $buildingId,
                 'expense_category_id' => $categories[$this->categoryFor($title)] ?? null,
                 'created_by' => $adminId, 'title' => $title, 'amount' => $amount,
                 'expense_date' => JDate::toGregorian($jdate),
-                'description' => 'مسئول: '.$person, 'distribution' => 'fund', 'responsible' => 'both',
+                'description' => ($isUnitPaid ? 'پرداخت مستقیم توسط واحدها (خارج از صندوق) — ' : '').'مسئول: '.$person,
+                'distribution' => 'fund', 'responsible' => 'both',
             ]);
 
-            // These fund costs were historically paid from the fund — record the disbursement.
-            $payments->registerFundCost($expense, [
-                'amount' => $amount,
-                'payment_date' => JDate::toGregorian($jdate),
-                'notes' => 'پرداخت از صندوق — مسئول: '.$person,
+            // Fund-borne costs: record the disbursement from the fund.
+            // Unit-paid special costs did NOT touch the fund → no fund payment.
+            if (! $isUnitPaid) {
+                $payments->registerFundCost($expense, [
+                    'amount' => $amount,
+                    'payment_date' => JDate::toGregorian($jdate),
+                    'notes' => 'پرداخت از صندوق — مسئول: '.$person,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Add an opening reserve/deposit so the fund reconciles to the real balance.
+     */
+    private function addReserve(int $buildingId, int $orgId, int $adminId, int $target): int
+    {
+        $in = (int) Payment::whereIn('type', ['charge', 'unit_cost'])->where('building_id', $buildingId)->sum('amount');
+        $out = (int) Payment::where('type', 'fund_cost')->where('building_id', $buildingId)->sum('amount');
+        $deposit = $target - ($in - $out);
+
+        if ($deposit !== 0) {
+            Payment::create([
+                'organization_id' => $orgId, 'unit_id' => null, 'building_id' => $buildingId,
+                'type' => 'deposit', 'expense_id' => null, 'created_by' => $adminId,
+                'amount' => $deposit, 'payment_date' => JDate::toGregorian('1404/07/01'),
+                'notes' => 'موجودی اولیه / ذخیرهٔ صندوق',
             ]);
         }
+
+        return $deposit;
     }
 
     private function categoryFor(string $title): string
@@ -297,6 +343,12 @@ class ImportKamaliBuilding extends Command
         }
         $this->table(['واحد', 'هدف', 'مانده', 'وضعیت'], $rows);
         $this->info('هزینه‌ها: '.Expense::where('building_id', $building->id)->count().' مورد — '.number_format((int) Expense::where('building_id', $building->id)->sum('amount')).' ریال');
+
+        $bid = $building->id;
+        $charges = (int) Payment::where('building_id', $bid)->where('type', 'charge')->sum('amount');
+        $deposit = (int) Payment::where('building_id', $bid)->where('type', 'deposit')->sum('amount');
+        $fundOut = (int) Payment::where('building_id', $bid)->where('type', 'fund_cost')->sum('amount');
+        $this->info('صندوق: شارژ '.number_format($charges).' + ذخیره '.number_format($deposit).' − پرداخت هزینه '.number_format($fundOut).' = '.number_format($charges + $deposit - $fundOut).' ریال');
 
         if (! $ok) {
             $this->error('برخی مانده‌ها با فایل مطابقت ندارند.');

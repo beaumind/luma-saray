@@ -18,9 +18,9 @@ class Index extends Component
     {
         $now = Jalalian::now();
 
-        // Fund cash = money units paid in (charge + unit cost shares) minus what
-        // the fund paid out for costs.
-        $inflow = (int) Payment::whereIn('type', ['charge', 'unit_cost'])->sum('amount');
+        // Fund cash = money in (charges + unit cost shares + deposits/reserve)
+        // minus what the fund paid out for costs.
+        $inflow = (int) Payment::whereIn('type', ['charge', 'unit_cost', 'deposit'])->sum('amount');
         $fundOut = (int) Payment::where('type', 'fund_cost')->sum('amount');
         $balance = $inflow - $fundOut;
 
@@ -64,7 +64,7 @@ class Index extends Component
             $exp = (int) Expense::whereBetween('expense_date', [$s, $eIncl])->sum('amount');
             $bars[] = ['m' => mb_substr($monthNames[$mm - 1], 0, 4), 'income' => $inc, 'expense' => $exp];
 
-            $inUpTo = (int) Payment::whereIn('type', ['charge', 'unit_cost'])->where('payment_date', '<', $e)->sum('amount');
+            $inUpTo = (int) Payment::whereIn('type', ['charge', 'unit_cost', 'deposit'])->where('payment_date', '<', $e)->sum('amount');
             $outUpTo = (int) Payment::where('type', 'fund_cost')->where('payment_date', '<', $e)->sum('amount');
             $trend[] = $inUpTo - $outUpTo;
         }
