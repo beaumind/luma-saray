@@ -95,7 +95,7 @@ class Index extends Component
             'name' => 'required|string|max:200',
             'mobile' => 'nullable|string|max:20',
             'national_code' => 'nullable|string|max:10',
-            'resident_count' => 'required|integer|min:1|max:20',
+            'resident_count' => 'required|integer|min:0|max:20',
             'move_in_date' => ['nullable', new JalaliDate],
             'move_out_date' => ['nullable', new JalaliDate],
         ]);

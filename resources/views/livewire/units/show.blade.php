@@ -3,7 +3,7 @@
     if ($balance > 0) { $balColor = '#dc2626'; $balBg = '#fdeded'; $balState = 'بدهکار'; $balLabel = Fmt::money($balance).' '.Fmt::currency(); }
     elseif ($balance < 0) { $balColor = '#16a34a'; $balBg = '#e9f7ef'; $balState = 'بستانکار'; $balLabel = Fmt::money($balance).' '.Fmt::currency(); }
     else { $balColor = '#71717a'; $balBg = '#f4f4f5'; $balState = 'تسویه'; $balLabel = '۰ '.Fmt::currency(); }
-    $occupied = $residents->isNotEmpty();
+    $occupied = $residents->sum('resident_count') > 0;
 @endphp
 <div>
     <x-app-header title="واحد {{ Fmt::fa($unit->number) }}" :back="route('units.index')" />

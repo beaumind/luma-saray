@@ -40,7 +40,7 @@ class Index extends Component
         $debtorCount = $units->filter(fn ($u) => $u->balance > 0)->count();
 
         $totalUnits = $units->count();
-        $occupied = $units->filter(fn ($u) => $u->activeResidents->isNotEmpty())->count();
+        $occupied = $units->filter(fn ($u) => $u->activeResidents->sum('resident_count') > 0)->count();
         $residentsTotal = (int) $units->sum(fn ($u) => $u->activeResidents->sum('resident_count'));
         $collectionRate = $monthCharges > 0 ? (int) round($monthIncome / $monthCharges * 100) : 0;
 

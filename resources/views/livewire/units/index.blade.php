@@ -26,8 +26,8 @@
             @forelse($units as $u)
                 @php
                     $bal = $u->balance;
-                    $occupied = $u->activeResidents->isNotEmpty();
-                    $resident = $u->activeResidents->first();
+                    $occupied = $u->activeResidents->sum('resident_count') > 0;
+                    $resident = $u->activeResidents->sortByDesc('resident_count')->first();
                     if ($bal > 0) { $balColor = '#dc2626'; $balLabel = Fmt::money($bal); }
                     elseif ($bal < 0) { $balColor = '#16a34a'; $balLabel = Fmt::money($bal); }
                     else { $balColor = '#71717a'; $balLabel = 'تسویه'; }

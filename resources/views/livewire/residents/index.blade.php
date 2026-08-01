@@ -45,7 +45,7 @@
                         <option value="owner">مالک</option><option value="tenant">مستأجر</option>
                     </select>
                 </label>
-                <div class="flex-1"><x-input wire:model="resident_count" label="تعداد نفرات" type="number" /></div>
+                <div class="flex-1"><x-input wire:model="resident_count" label="تعداد نفرات (۰ = خالی)" type="number" /></div>
             </div>
             <x-input wire:model="name" label="نام و نام خانوادگی" />
             <div class="flex gap-2.5">
