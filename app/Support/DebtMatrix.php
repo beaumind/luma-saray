@@ -12,8 +12,9 @@ use Morilog\Jalali\Jalalian;
  * screen and used by the Excel/PDF/image exports.
  *
  * Periods can be monthly, seasonal (Jalali فصل), or yearly. Each period cell
- * shows the amount PAID in that period, coloured by how it compares to what
- * was charged — green = fully paid, yellow = partial, red = unpaid.
+ * shows how much of that period's charge has been COVERED by payments
+ * (allocated oldest-first across all obligations), coloured by how it compares
+ * to what was charged — green = fully paid, yellow = partial, red = unpaid.
  */
 class DebtMatrix
 {
@@ -49,42 +50,51 @@ class DebtMatrix
             $owner = $unit->activeResidents->firstWhere('type', 'owner');
             $resident = $unit->activeResidents->first();
 
-            $pastDebt = 0;
-            $totalDebt = 0;
             $latestCharge = ['date' => null, 'amount' => 0];
             $buckets = array_fill(0, count($periods), ['paid' => 0, 'charged' => 0]);
 
+            // Split the ledger into obligations (charge/cost/expense debits) and
+            // the settlement pool (payment credits); standalone creditor entries
+            // are tracked separately and ignored here. Payments are then applied
+            // to obligations oldest-first — a waterfall — so a charge counts as
+            // "paid" once enough money has arrived to cover it, no matter the
+            // exact date the money came in. This lets a payment settle the month
+            // it was meant for (e.g. paying تیر on ۳۱ خرداد) instead of being
+            // stranded in whatever period its payment date happens to fall in.
+            $debits = [];
+            $pool = 0;
             foreach ($txs as $t) {
-                // Only charge/cost debits and settlement payments affect debt;
-                // standalone creditor entries are tracked separately.
                 if ($t->direction === 'debit' && in_array($t->type, ['charge', 'cost', 'expense'])) {
-                    $signed = $t->amount;
+                    $debits[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount];
+
+                    // Track the latest single monthly charge for the "شارژ ماهانه" column.
+                    if ($t->type === 'charge'
+                        && ($latestCharge['date'] === null || $t->transaction_date >= $latestCharge['date'])) {
+                        $latestCharge = ['date' => $t->transaction_date, 'amount' => (int) $t->amount];
+                    }
                 } elseif ($t->direction === 'credit' && $t->type === 'payment') {
-                    $signed = -$t->amount;
-                } else {
-                    $signed = 0;
+                    $pool += (int) $t->amount;
                 }
-                $totalDebt += $signed;
-                $date = $t->transaction_date;
+            }
 
-                // Track the latest single monthly charge for the "شارژ ماهانه" column.
-                if ($t->type === 'charge' && $t->direction === 'debit'
-                    && ($latestCharge['date'] === null || $date >= $latestCharge['date'])) {
-                    $latestCharge = ['date' => $date, 'amount' => $t->amount];
-                }
+            usort($debits, fn ($a, $b) => $a['date'] <=> $b['date']);
 
-                if ($date < $windowStart) {
-                    $pastDebt += $signed;
+            $pastDebt = 0;
+            $totalDebt = 0;
+            foreach ($debits as $d) {
+                $covered = min($pool, $d['amount']);
+                $pool -= $covered;
+                $totalDebt += $d['amount'] - $covered;
+
+                if ($d['date'] < $windowStart) {
+                    $pastDebt += $d['amount'] - $covered;
 
                     continue;
                 }
                 foreach ($periods as $idx => $p) {
-                    if ($date >= $p['start'] && $date < $p['end']) {
-                        if ($t->direction === 'credit' && $t->type === 'payment') {
-                            $buckets[$idx]['paid'] += $t->amount;
-                        } elseif ($t->direction === 'debit' && in_array($t->type, ['charge', 'cost', 'expense'])) {
-                            $buckets[$idx]['charged'] += $t->amount;
-                        }
+                    if ($d['date'] >= $p['start'] && $d['date'] < $p['end']) {
+                        $buckets[$idx]['charged'] += $d['amount'];
+                        $buckets[$idx]['paid'] += $covered;
                         break;
                     }
                 }
