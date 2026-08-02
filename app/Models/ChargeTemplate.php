@@ -34,8 +34,17 @@ class ChargeTemplate extends Model
         return $this->belongsTo(Building::class);
     }
 
-    public function calculateForUnit(Unit $unit): int
+    /**
+     * The charge for a unit. When $chargeDate falls inside a vacancy period the
+     * unit is billed only the base (fixed) component — the per-resident part is
+     * dropped, since no one is living there.
+     */
+    public function calculateForUnit(Unit $unit, ?string $chargeDate = null): int
     {
+        if ($chargeDate !== null && $unit->isVacantOn($chargeDate)) {
+            return $this->baseAmount();
+        }
+
         $residentCount = $unit->active_resident_count ?: 1;
 
         return match ($this->type) {
@@ -44,6 +53,12 @@ class ChargeTemplate extends Model
             'combined' => $this->fixed_amount + ($this->per_resident_amount * $residentCount),
             default => $this->fixed_amount,
         };
+    }
+
+    /** The base charge a vacant unit pays (the fixed component). */
+    public function baseAmount(): int
+    {
+        return (int) $this->fixed_amount;
     }
 
     public function getTypeLabel(): string

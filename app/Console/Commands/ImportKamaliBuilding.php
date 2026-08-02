@@ -175,11 +175,12 @@ class ImportKamaliBuilding extends Command
 
             $this->resetBuilding($building->id);
 
-            // Charge template (combined: 400k fixed + 100k/person) for future use.
+            // Charge template (combined: 400k fixed + 100k/person). Amounts are
+            // stored in RIAL like all money, so the Toman figures are ×10.
             ChargeTemplate::create([
                 'organization_id' => $orgId, 'building_id' => $building->id,
                 'title' => 'شارژ ماهانه', 'type' => 'combined', 'period' => 'monthly',
-                'fixed_amount' => 400000, 'per_resident_amount' => 100000, 'is_active' => true,
+                'fixed_amount' => 4_000_000, 'per_resident_amount' => 1_000_000, 'is_active' => true,
             ]);
 
             // Units + residents.

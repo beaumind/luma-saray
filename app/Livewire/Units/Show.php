@@ -2,20 +2,27 @@
 
 namespace App\Livewire\Units;
 
+use App\Models\ChargeTemplate;
 use App\Models\LedgerTransaction;
 use App\Models\Unit;
+use App\Models\UnitVacancy;
 use App\Rules\JalaliDate;
 use App\Services\PaymentService;
+use App\Services\VacancyService;
 use App\Support\Fmt;
 use App\Support\JDate;
+use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Morilog\Jalali\Jalalian;
 
 #[Layout('layouts.app')]
 class Show extends Component
 {
     use WithFileUploads;
+
+    private const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
     public Unit $unit;
 
@@ -32,10 +39,70 @@ class Show extends Component
 
     public $receipt;
 
+    // Vacancy modal
+    public bool $showVacancyModal = false;
+
+    public int $vac_start_jy;
+
+    public int $vac_start_jm = 1;
+
+    public int $vac_end_jy;
+
+    public int $vac_end_jm = 3;
+
+    public string $vac_note = '';
+
     public function mount(Unit $unit): void
     {
         $this->unit = $unit->load(['building', 'activeResidents']);
         $this->pay_date = JDate::today();
+        $this->vac_start_jy = $this->vac_end_jy = (int) Jalalian::now()->getYear();
+    }
+
+    public function openVacancy(): void
+    {
+        $this->resetValidation();
+        $this->vac_start_jy = $this->vac_end_jy = (int) Jalalian::now()->getYear();
+        $this->vac_start_jm = 1;
+        $this->vac_end_jm = 3;
+        $this->vac_note = '';
+        $this->showVacancyModal = true;
+    }
+
+    public function saveVacancy(VacancyService $service): void
+    {
+        $this->validate([
+            'vac_start_jy' => 'required|integer|min:1390|max:1450',
+            'vac_start_jm' => 'required|integer|min:1|max:12',
+            'vac_end_jy' => 'required|integer|min:1390|max:1450',
+            'vac_end_jm' => 'required|integer|min:1|max:12',
+            'vac_note' => 'nullable|string|max:200',
+        ]);
+
+        if ($this->vac_end_jy * 12 + $this->vac_end_jm < $this->vac_start_jy * 12 + $this->vac_start_jm) {
+            $this->addError('vac_end_jm', 'ماه پایان باید بعد از ماه شروع باشد.');
+
+            return;
+        }
+
+        $service->add(
+            $this->unit,
+            [$this->vac_start_jy, $this->vac_start_jm],
+            [$this->vac_end_jy, $this->vac_end_jm],
+            $this->vac_note ?: null,
+        );
+
+        $this->showVacancyModal = false;
+        $this->unit->refresh();
+        session()->flash('success', 'دورهٔ عدم سکونت ثبت شد و شارژ آن ماه‌ها به نرخ پایه اصلاح شد.');
+    }
+
+    public function removeVacancy(int $id, VacancyService $service): void
+    {
+        $vacancy = UnitVacancy::where('unit_id', $this->unit->id)->findOrFail($id);
+        $service->remove($vacancy);
+        $this->unit->refresh();
+        session()->flash('success', 'دورهٔ عدم سکونت حذف شد و شارژ ماه‌ها به حالت اول بازگشت.');
     }
 
     public function openPayment(): void
@@ -111,12 +178,40 @@ class Show extends Component
         }
         $ledger = array_reverse($ledger);
 
+        $vacancies = $this->unit->vacancies()->orderByDesc('starts_on')->get()->map(function ($v) {
+            // ends_on is the exclusive first-of-next-month; step back a day for the display month.
+            $endInclusive = $v->ends_on->copy()->subDay();
+
+            return [
+                'id' => $v->id,
+                'from' => self::monthLabel($v->starts_on),
+                'to' => self::monthLabel($endInclusive),
+                'note' => $v->note,
+                'saved' => (int) collect($v->adjustments ?? [])->sum(fn ($a) => $a[1] - $this->baseGuess()),
+            ];
+        })->all();
+
         return view('livewire.units.show', [
             'ledger' => $ledger,
             'balance' => $this->unit->balance,
             'creditBalance' => $this->unit->creditBalance,
             'residents' => $this->unit->activeResidents()->get(),
+            'vacancies' => $vacancies,
+            'months' => self::MONTH_NAMES,
         ])->title('واحد '.$this->unit->number);
+    }
+
+    private function baseGuess(): int
+    {
+        return (int) (ChargeTemplate::where('building_id', $this->unit->building_id)
+            ->where('is_active', true)->latest('id')->value('fixed_amount') ?? 0);
+    }
+
+    private static function monthLabel(Carbon $date): string
+    {
+        $j = Jalalian::fromCarbon($date);
+
+        return self::MONTH_NAMES[$j->getMonth() - 1].' '.JDate::toPersianDigits((string) $j->getYear());
     }
 
     private function typeLabel(string $type): string

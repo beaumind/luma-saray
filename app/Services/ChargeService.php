@@ -15,7 +15,7 @@ class ChargeService
         $count = 0;
 
         foreach ($units as $unit) {
-            $amount = $template->calculateForUnit($unit);
+            $amount = $template->calculateForUnit($unit, $date);
             if ($amount > 0) {
                 $this->ledger->recordCharge(
                     $unit,
@@ -32,7 +32,7 @@ class ChargeService
 
     public function applyChargeToUnit(ChargeTemplate $template, Unit $unit, string $period, string $date): void
     {
-        $amount = $template->calculateForUnit($unit);
+        $amount = $template->calculateForUnit($unit, $date);
         if ($amount > 0) {
             $this->ledger->recordCharge(
                 $unit,

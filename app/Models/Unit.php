@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Unit extends Model
 {
@@ -61,6 +62,25 @@ class Unit extends Model
     public function ledgerTransactions(): HasMany
     {
         return $this->hasMany(LedgerTransaction::class);
+    }
+
+    public function vacancies(): HasMany
+    {
+        return $this->hasMany(UnitVacancy::class);
+    }
+
+    /**
+     * Whether the unit is marked empty on the given date (a charge date).
+     * While vacant only the base charge applies.
+     */
+    public function isVacantOn(Carbon|string $date): bool
+    {
+        $date = $date instanceof Carbon ? $date->toDateString() : substr((string) $date, 0, 10);
+
+        return $this->vacancies()
+            ->whereDate('starts_on', '<=', $date)
+            ->whereDate('ends_on', '>', $date)
+            ->exists();
     }
 
     public function payments(): HasMany

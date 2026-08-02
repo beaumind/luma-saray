@@ -55,6 +55,30 @@
             @endforelse
         </div>
 
+        {{-- Vacancy periods --}}
+        <div class="flex flex-col gap-[11px] rounded-[16px] border border-[#ececef] bg-white px-[15px] py-3.5">
+            <div class="flex items-center justify-between">
+                <div class="text-[13.5px] font-bold text-[#18181b]">دوره‌های عدم سکونت</div>
+                <button wire:click="openVacancy" type="button" class="flex h-[30px] items-center gap-1 rounded-[9px] bg-[#eef0fb] px-2.5 text-[12px] font-bold text-[#5b5bd6]">
+                    <span class="text-[14px] leading-none">＋</span>ثبت
+                </button>
+            </div>
+            @forelse($vacancies as $v)
+                <div class="flex items-center gap-2.5 rounded-[11px] bg-[#fafafa] px-3 py-2.5">
+                    <div class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] bg-[#f4f4f5] text-[15px]">🏠</div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[12.5px] font-semibold text-[#18181b]">{{ $v['from'] }} تا {{ $v['to'] }}</div>
+                        <div class="text-[11px] text-[#a1a1aa]">
+                            نرخ پایه اعمال شد@if($v['saved'] > 0) · صرفه‌جویی {{ Fmt::money($v['saved']) }} {{ Fmt::currency() }}@endif@if($v['note']) · {{ $v['note'] }}@endif
+                        </div>
+                    </div>
+                    <button wire:click="removeVacancy({{ $v['id'] }})" wire:confirm="این دوره حذف و شارژ ماه‌ها به حالت اول بازگردد؟" type="button" class="flex-none rounded-[8px] px-2 py-1 text-[11.5px] font-bold text-[#dc2626]">حذف</button>
+                </div>
+            @empty
+                <div class="py-1 text-center text-[12px] text-[#a1a1aa]">واحد در دوره‌ای خالی نبوده است. برای واحدهای خالی فقط شارژ پایه محاسبه می‌شود.</div>
+            @endforelse
+        </div>
+
         {{-- Ledger (bank statement) --}}
         <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
             <div class="flex items-center justify-between border-b border-[#f4f4f5] px-[15px] py-[13px]">
@@ -98,6 +122,40 @@
             </div>
             <x-input wire:model="pay_notes" label="توضیحات" />
             <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</button>
+        </form>
+    </x-sheet>
+
+    {{-- Vacancy sheet --}}
+    <x-sheet model="showVacancyModal" title="ثبت دورهٔ عدم سکونت">
+        <form wire:submit="saveVacancy" class="flex flex-col gap-[13px]">
+            <p class="rounded-[11px] bg-[#f6f6fd] px-3 py-2.5 text-[11.5px] leading-6 text-[#5b5bd6]">
+                برای ماه‌هایی که واحد خالی بوده، فقط شارژ پایه (بدون سهم نفرات) محاسبه می‌شود. شارژ ماه‌های ثبت‌شده هم به‌صورت خودکار اصلاح می‌گردد.
+            </p>
+            <div>
+                <span class="mb-1.5 block text-[12.5px] font-semibold text-[#3f3f46]">از ماه</span>
+                <div class="flex gap-2.5">
+                    <select wire:model="vac_start_jm" class="h-[46px] flex-1 rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-3 text-[14px] outline-none focus:border-[#5b5bd6]">
+                        @foreach($months as $i => $m)<option value="{{ $i + 1 }}">{{ $m }}</option>@endforeach
+                    </select>
+                    <select wire:model="vac_start_jy" class="h-[46px] w-[110px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-3 text-[14px] outline-none focus:border-[#5b5bd6]">
+                        @for($y = (int) \Morilog\Jalali\Jalalian::now()->getYear() + 1; $y >= 1400; $y--)<option value="{{ $y }}">{{ \App\Support\JDate::toPersianDigits((string) $y) }}</option>@endfor
+                    </select>
+                </div>
+            </div>
+            <div>
+                <span class="mb-1.5 block text-[12.5px] font-semibold text-[#3f3f46]">تا ماه (شامل خودِ ماه)</span>
+                <div class="flex gap-2.5">
+                    <select wire:model="vac_end_jm" class="h-[46px] flex-1 rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-3 text-[14px] outline-none focus:border-[#5b5bd6]">
+                        @foreach($months as $i => $m)<option value="{{ $i + 1 }}">{{ $m }}</option>@endforeach
+                    </select>
+                    <select wire:model="vac_end_jy" class="h-[46px] w-[110px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-3 text-[14px] outline-none focus:border-[#5b5bd6]">
+                        @for($y = (int) \Morilog\Jalali\Jalalian::now()->getYear() + 1; $y >= 1400; $y--)<option value="{{ $y }}">{{ \App\Support\JDate::toPersianDigits((string) $y) }}</option>@endfor
+                    </select>
+                </div>
+                @error('vac_end_jm')<span class="mt-1 block text-[11.5px] text-[#dc2626]">{{ $message }}</span>@enderror
+            </div>
+            <x-input wire:model="vac_note" label="توضیح (اختیاری) — مثلاً: سفر" />
+            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت و اصلاح شارژ</button>
         </form>
     </x-sheet>
 </div>
