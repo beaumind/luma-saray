@@ -165,8 +165,8 @@
                         <div class="mb-1.5 text-[12.5px] font-semibold text-[#3f3f46]">فاکتور / ضمیمه</div>
                         <div class="flex flex-col gap-2">
                             @foreach($detailExpense->attachments as $att)
-                                <a href="{{ \Illuminate\Support\Facades\Storage::url($att) }}" target="_blank">
-                                    <img src="{{ \Illuminate\Support\Facades\Storage::url($att) }}" alt="فاکتور"
+                                <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($att) }}" target="_blank">
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($att) }}" alt="فاکتور"
                                          class="max-h-[280px] w-full rounded-[12px] border border-[#ececef] object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
                                     <span style="display:none" class="block rounded-[10px] bg-[#eef0fb] px-3 py-2 text-center text-[12.5px] text-[#5b5bd6]">باز کردن فایل ضمیمه</span>
                                 </a>

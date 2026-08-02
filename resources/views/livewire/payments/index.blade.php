@@ -145,9 +145,10 @@
                 @if($detailPayment->receipt_path)
                     <div>
                         <div class="mb-1.5 text-[12.5px] font-semibold text-[#3f3f46]">رسید پرداخت</div>
-                        <a href="{{ \Illuminate\Support\Facades\Storage::url($detailPayment->receipt_path) }}" target="_blank">
-                            <img src="{{ \Illuminate\Support\Facades\Storage::url($detailPayment->receipt_path) }}" alt="رسید"
-                                 class="max-h-[280px] w-full rounded-[12px] border border-[#ececef] object-contain" onerror="this.style.display='none'">
+                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($detailPayment->receipt_path) }}" target="_blank">
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($detailPayment->receipt_path) }}" alt="رسید"
+                                 class="max-h-[280px] w-full rounded-[12px] border border-[#ececef] object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                            <span style="display:none" class="block rounded-[10px] bg-[#fdeded] px-3 py-2 text-center text-[12px] text-[#dc2626]">فایل رسید یافت نشد (احتمالاً پیش از فعال‌سازی ذخیره‌سازی آپلود شده)</span>
                         </a>
                     </div>
                 @endif
