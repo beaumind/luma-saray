@@ -9,7 +9,7 @@ permissions:
 jobs:
   diagnose:
     name: Cluster diagnostics (faranex-lumasaray)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: production
     steps:
       - name: Set up kubeconfig
