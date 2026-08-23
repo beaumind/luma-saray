@@ -27,7 +27,7 @@
             ['label' => 'شارژ', 'route' => 'charges.index', 'active' => request()->routeIs('charges.*')],
             ['label' => 'پرداخت', 'route' => 'payments.index', 'active' => request()->routeIs('payments.*')],
         ];
-        $moreActive = request()->routeIs('residents.*') || request()->routeIs('expenses.*') || request()->routeIs('buildings.*') || request()->routeIs('reports.*') || request()->routeIs('settings.*');
+        $moreActive = request()->routeIs('residents.*') || request()->routeIs('expenses.*') || request()->routeIs('buildings.*') || request()->routeIs('reports.*') || request()->routeIs('users.*') || request()->routeIs('settings.*');
     @endphp
     <div class="fixed bottom-0 left-1/2 z-40 flex h-[78px] w-full max-w-[440px] -translate-x-1/2 border-t border-[#ececef] bg-white/95 px-2 pb-4 pt-2 backdrop-blur-md">
         @foreach($navItems as $item)
@@ -61,6 +61,7 @@
                         ['icon' => '🧾', 'label' => 'هزینه‌ها', 'route' => 'expenses.index'],
                         ['icon' => '🏢', 'label' => 'ساختمان‌ها', 'route' => 'buildings.index'],
                         ['icon' => '📊', 'label' => 'گزارش‌ها', 'route' => 'reports.index'],
+                        ['icon' => '👤', 'label' => 'کاربران', 'route' => 'users.index'],
                         ['icon' => '⚙️', 'label' => 'تنظیمات', 'route' => 'settings.index'],
                     ];
                 @endphp
