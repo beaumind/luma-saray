@@ -112,11 +112,8 @@
                 </label>
 
                 <div class="flex gap-3 pt-2">
-                    <button type="submit" class="flex-1 bg-[#0f766e] hover:bg-[#0f5f58] text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
-                        wire:loading.attr="disabled">
-                        <span wire:loading.remove>{{ $editingId ? 'بروزرسانی' : 'ثبت کاربر' }}</span>
-                        <span wire:loading>در حال ذخیره...</span>
-                    </button>
+                    <x-submit-button target="save" loadingLabel="در حال ذخیره..."
+                        class="flex-1 bg-[#0f766e] hover:bg-[#0f5f58] text-white py-2.5 rounded-xl text-sm font-medium transition-colors">{{ $editingId ? 'بروزرسانی' : 'ثبت کاربر' }}</x-submit-button>
                     <button type="button" wire:click="$set('showModal', false)"
                         class="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50">
                         انصراف

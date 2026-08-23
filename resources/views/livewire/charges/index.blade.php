@@ -94,7 +94,7 @@
                 <div class="flex-1"><x-money-input wire:model="fixed_amount" label="مبلغ ثابت ({{ \App\Support\Fmt::currency() }})" /></div>
                 <div class="flex-1"><x-money-input wire:model="per_resident_amount" label="مبلغ هر نفر" /></div>
             </div>
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره قالب</button>
+            <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره قالب</x-submit-button>
         </form>
     </x-sheet>
 
@@ -103,7 +103,7 @@
         <form wire:submit="applyCharge" class="flex flex-col gap-3">
             <x-input wire:model="apply_period" label="دوره (مثال: ۱۴۰۳/۰۵)" />
             <x-jalali-date-input wire:model="apply_date" label="تاریخ ثبت" />
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">اعمال بر همهٔ واحدها</button>
+            <x-submit-button target="applyCharge" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">اعمال بر همهٔ واحدها</x-submit-button>
         </form>
     </x-sheet>
 </div>

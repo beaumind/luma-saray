@@ -121,7 +121,8 @@
                 <div class="flex-1"><x-input wire:model="pay_tracking" label="شماره پیگیری" /></div>
             </div>
             <x-input wire:model="pay_notes" label="توضیحات" />
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</button>
+            <x-resumable-upload model="receipt_path" folder="receipts" label="تصویر رسید (اختیاری)" />
+            <x-submit-button target="savePayment" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</x-submit-button>
         </form>
     </x-sheet>
 
@@ -155,7 +156,7 @@
                 @error('vac_end_jm')<span class="mt-1 block text-[11.5px] text-[#dc2626]">{{ $message }}</span>@enderror
             </div>
             <x-input wire:model="vac_note" label="توضیح (اختیاری) — مثلاً: سفر" />
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت و اصلاح شارژ</button>
+            <x-submit-button target="saveVacancy" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت و اصلاح شارژ</x-submit-button>
         </form>
     </x-sheet>
 </div>

@@ -13,13 +13,12 @@ use App\Support\Fmt;
 use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 #[Layout('layouts.app', ['title' => 'پرداخت‌ها'])]
 class Index extends Component
 {
-    use WithFileUploads, WithPagination;
+    use WithPagination;
 
     public string $building_id_filter = '';
 
@@ -46,7 +45,7 @@ class Index extends Component
 
     public string $notes = '';
 
-    public $receipt;
+    public ?string $receipt_path = null;
 
     public function updatingSearch(): void
     {
@@ -102,7 +101,7 @@ class Index extends Component
             'amount' => 'required|integer|min:1',
             'payment_date' => ['required', new JalaliDate],
             'tracking_number' => 'nullable|string|max:100',
-            'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'receipt_path' => 'nullable|string|max:255',
             'unit_id' => 'nullable|exists:units,id',
             'expense_id' => 'nullable|exists:expenses,id',
         ];
@@ -119,7 +118,7 @@ class Index extends Component
             'payment_date' => JDate::toGregorian($this->payment_date),
             'tracking_number' => $this->tracking_number ?: null,
             'notes' => $this->notes ?: null,
-            'receipt_path' => $this->receipt ? $this->receipt->store('receipts', 'public') : null,
+            'receipt_path' => $this->receipt_path ?: null,
         ];
 
         $unit = $this->unit_id ? Unit::findOrFail((int) $this->unit_id) : null;
@@ -146,7 +145,7 @@ class Index extends Component
         $this->payment_date = '';
         $this->tracking_number = '';
         $this->notes = '';
-        $this->receipt = null;
+        $this->receipt_path = null;
         $this->resetValidation();
     }
 

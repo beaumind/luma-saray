@@ -103,7 +103,7 @@
                 <span class="text-[12.5px] font-semibold text-[#3f3f46]">رنگ</span>
                 <input type="color" wire:model="cat_color" class="h-[46px] w-full rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-2">
             </label>
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره دسته</button>
+            <x-submit-button target="saveCategory" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره دسته</x-submit-button>
         </form>
     </x-sheet>
 

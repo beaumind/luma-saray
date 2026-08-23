@@ -79,7 +79,7 @@
                 <div class="flex-1"><x-input wire:model="parking_count" label="پارکینگ" type="number" /></div>
                 <div class="flex-1"><x-input wire:model="storage_count" label="انباری" type="number" /></div>
             </div>
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره واحد</button>
+            <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره واحد</x-submit-button>
         </form>
     </x-sheet>
 </div>

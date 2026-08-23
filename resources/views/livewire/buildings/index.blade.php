@@ -40,7 +40,7 @@
                 <div class="flex-1"><x-input wire:model="manager_name" label="نام مدیر" /></div>
                 <div class="flex-1"><x-input wire:model="manager_mobile" label="موبایل مدیر" type="tel" /></div>
             </div>
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره ساختمان</button>
+            <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره ساختمان</x-submit-button>
         </form>
     </x-sheet>
 </div>

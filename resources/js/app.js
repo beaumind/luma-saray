@@ -1,6 +1,7 @@
 import './bootstrap';
 import html2canvas from 'html2canvas';
 import * as jalaali from 'jalaali-js';
+import Resumable from 'resumablejs';
 
 // Render an element to a PNG and trigger a download (report image export).
 window.exportReportImage = async (selector, filename = 'report.png') => {
@@ -86,4 +87,108 @@ window.jalaliPicker = () => ({
     nextMonth() { if (++this.viewM > 12) { this.viewM = 1; this.viewY++; } },
     goToday() { const t = todayJalali(); this.val = fmtJalali(t.jy, t.jm, t.jd); this.viewY = t.jy; this.viewM = t.jm; this.open = false; },
     clearDate() { this.val = ''; this.open = false; },
+});
+
+// ---- Resumable (chunked) file upload — Alpine component ----
+// Drag & drop, paste, click-to-browse, a modern progress loader, and resume.
+// On success it writes the stored path into the bound Livewire property.
+window.resumableUpload = (opts) => ({
+    model: opts.model,
+    folder: opts.folder,
+    accept: opts.accept || 'image/*,application/pdf',
+    target: opts.target,
+    // state
+    uploading: false,
+    progress: 0,
+    error: '',
+    fileName: '',
+    path: '',
+    previewUrl: '',
+    dragOver: false,
+    r: null,
+
+    applyPath(v) {
+        this.path = v || '';
+        this.fileName = this.path ? this.path.split('/').pop() : '';
+        this.previewUrl = this.path && opts.baseUrl ? opts.baseUrl.replace('__PATH__', this.path) : '';
+    },
+
+    init() {
+        // Existing value (edit mode): show that a file is already attached.
+        this.applyPath(this.$wire.get(this.model));
+
+        // The property can change server-side (e.g. opening an edit form) while
+        // this component is wire:ignore'd — keep the preview in sync, unless we
+        // are the ones mid-upload.
+        this.$wire.$watch(this.model, (v) => { if (!this.uploading) this.applyPath(v); });
+
+        const token = document.querySelector('meta[name="csrf-token"]')?.content;
+        const self = this;
+        this.r = new Resumable({
+            target: this.target,
+            testChunks: true,                 // ask the server which chunks exist → resume
+            chunkSize: 1 * 1024 * 1024,       // 1 MB
+            simultaneousUploads: 3,
+            maxFiles: 1,
+            fileType: ['jpg', 'jpeg', 'png', 'pdf'],
+            query: { folder: this.folder },
+            headers: { 'X-CSRF-TOKEN': token, Accept: 'application/json' },
+            forceChunkSize: false,
+            fileTypeErrorCallback() { self.error = 'فقط تصویر (JPG/PNG) یا PDF مجاز است.'; },
+        });
+
+        this.r.assignBrowse(this.$refs.browse);
+        this.r.assignDrop(this.$refs.zone);
+
+        this.r.on('fileAdded', () => {
+            this.error = '';
+            this.progress = 0;
+            this.uploading = true;
+            this.fileName = this.r.files[this.r.files.length - 1]?.fileName || '';
+            this.r.upload();
+        });
+        this.r.on('fileProgress', (file) => { this.progress = Math.round(file.progress() * 100); });
+        this.r.on('fileSuccess', (file, message) => {
+            this.uploading = false;
+            this.progress = 100;
+            let res = {};
+            try { res = JSON.parse(message); } catch (e) { /* noop */ }
+            if (res.path) {
+                this.path = res.path;
+                this.previewUrl = res.url || '';
+                this.$wire.set(this.model, res.path);
+            }
+        });
+        this.r.on('fileError', (file, message) => {
+            this.uploading = false;
+            let res = {};
+            try { res = JSON.parse(message); } catch (e) { /* noop */ }
+            this.error = res.message || 'بارگذاری ناموفق بود. دوباره تلاش کنید.';
+        });
+    },
+
+    // Paste an image/file directly into the drop zone.
+    onPaste(e) {
+        const items = e.clipboardData?.items || [];
+        for (const it of items) {
+            if (it.kind === 'file') {
+                const f = it.getAsFile();
+                if (f) { this.r.addFile(f); e.preventDefault(); return; }
+            }
+        }
+    },
+
+    remove() {
+        this.path = '';
+        this.previewUrl = '';
+        this.fileName = '';
+        this.progress = 0;
+        this.error = '';
+        if (this.r) this.r.cancel();
+        this.$wire.set(this.model, null);
+    },
+
+    isImage() {
+        return /\.(jpe?g|png)$/i.test(this.fileName || this.path || '');
+    },
 });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ReportExportController;
+use App\Http\Controllers\UploadController;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\Buildings\Index as BuildingsIndex;
@@ -58,4 +59,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/users', UsersIndex::class)->name('users.index');
 
     Route::get('/settings', SettingsIndex::class)->name('settings.index');
+
+    // Chunked/resumable uploads (resumable.js)
+    Route::get('/uploads/chunk', [UploadController::class, 'test'])->name('uploads.test');
+    Route::post('/uploads/chunk', [UploadController::class, 'store'])->name('uploads.chunk');
 });

@@ -14,14 +14,11 @@ use App\Support\JDate;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use Morilog\Jalali\Jalalian;
 
 #[Layout('layouts.app')]
 class Show extends Component
 {
-    use WithFileUploads;
-
     private const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
     public Unit $unit;
@@ -37,7 +34,7 @@ class Show extends Component
 
     public string $pay_notes = '';
 
-    public $receipt;
+    public ?string $receipt_path = null;
 
     // Vacancy modal
     public bool $showVacancyModal = false;
@@ -111,7 +108,7 @@ class Show extends Component
         $this->pay_date = JDate::today();
         $this->pay_tracking = '';
         $this->pay_notes = '';
-        $this->receipt = null;
+        $this->receipt_path = null;
         $this->showPaymentModal = true;
     }
 
@@ -121,20 +118,15 @@ class Show extends Component
             'pay_amount' => 'required|integer|min:1',
             'pay_date' => ['required', new JalaliDate],
             'pay_tracking' => 'nullable|string|max:100',
-            'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'receipt_path' => 'nullable|string|max:255',
         ]);
-
-        $receiptPath = null;
-        if ($this->receipt) {
-            $receiptPath = $this->receipt->store('receipts', 'public');
-        }
 
         $service->register($this->unit, [
             'amount' => Fmt::toRial($this->pay_amount),
             'payment_date' => JDate::toGregorian($this->pay_date),
             'tracking_number' => $this->pay_tracking ?: null,
             'notes' => $this->pay_notes ?: null,
-            'receipt_path' => $receiptPath,
+            'receipt_path' => $this->receipt_path ?: null,
         ]);
 
         $this->showPaymentModal = false;

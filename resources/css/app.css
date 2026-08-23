@@ -6,6 +6,8 @@
 @source '../../storage/framework/views/*.php';
 @source '../../vendor/livewire/livewire/src/**/*.php';
 
+[x-cloak] { display: none !important; }
+
 @theme {
     --font-sans: 'Vazirmatn', 'Manrope', ui-sans-serif, system-ui, sans-serif;
 

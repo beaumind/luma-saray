@@ -104,15 +104,9 @@
 
             <x-input wire:model="description" label="توضیحات (اختیاری)" />
 
-            <label class="flex flex-col gap-1.5">
-                <span class="text-[12.5px] font-semibold text-[#3f3f46]">تصویر فاکتور (اختیاری)</span>
-                <input type="file" wire:model="image" accept="image/*,application/pdf"
-                       class="rounded-[11px] border border-dashed border-[#d4d4d8] bg-[#fafafa] px-3 py-3 text-[12px] text-[#71717a] file:ml-2 file:rounded-lg file:border-0 file:bg-[#eef0fb] file:px-3 file:py-1.5 file:text-[#5b5bd6]">
-                <span wire:loading wire:target="image" class="text-[11px] text-[#a1a1aa]">در حال بارگذاری…</span>
-                @error('image')<span class="text-[11.5px] text-[#dc2626]">{{ $message }}</span>@enderror
-            </label>
+            <x-resumable-upload model="image_path" folder="expenses" label="تصویر فاکتور (اختیاری)" />
 
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت هزینه</button>
+            <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت هزینه</x-submit-button>
             <p class="text-center text-[11px] text-[#a1a1aa]">پرداخت این هزینه را از بخش «پرداخت‌ها» ثبت کنید.</p>
         </form>
     </x-sheet>

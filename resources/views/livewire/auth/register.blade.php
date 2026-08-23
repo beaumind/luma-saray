@@ -42,11 +42,8 @@
         </div>
         @error('password')<span class="-mt-1 text-xs text-[#dc2626]">{{ $message }}</span>@enderror
 
-        <button type="submit" wire:loading.attr="disabled"
-                class="mt-1 flex h-[50px] items-center justify-center rounded-[13px] bg-[#5b5bd6] text-[15.5px] font-bold text-white shadow-[0_10px_22px_-8px_rgba(91,91,214,.6)] disabled:opacity-70">
-            <span wire:loading.remove wire:target="register">ایجاد حساب</span>
-            <span wire:loading wire:target="register">در حال ایجاد…</span>
-        </button>
+        <x-submit-button target="register" loadingLabel="در حال ایجاد…"
+                class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15.5px] font-bold text-white shadow-[0_10px_22px_-8px_rgba(91,91,214,.6)]">ایجاد حساب</x-submit-button>
     </form>
 
     <div class="text-center text-[13px] text-[#71717a]">

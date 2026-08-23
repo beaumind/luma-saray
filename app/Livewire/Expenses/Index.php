@@ -12,13 +12,12 @@ use App\Support\Fmt;
 use App\Support\JDate;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 #[Layout('layouts.app', ['title' => 'هزینه‌ها'])]
 class Index extends Component
 {
-    use WithFileUploads, WithPagination;
+    use WithPagination;
 
     public string $building_id_filter = '';
 
@@ -51,7 +50,7 @@ class Index extends Component
 
     public string $responsible = 'owner';
 
-    public $image;
+    public ?string $image_path = null;
 
     public function updatingSearch(): void
     {
@@ -100,6 +99,7 @@ class Index extends Component
         $this->distribution = in_array($e->distribution, ['fund', 'all_units', 'single_unit']) ? $e->distribution : 'fund';
         $this->single_unit_id = (string) ($e->expenseUnits->first()->unit_id ?? '');
         $this->responsible = $e->responsible ?? 'owner';
+        $this->image_path = $e->attachments[0] ?? null;
         $this->showModal = true;
     }
 
@@ -113,15 +113,12 @@ class Index extends Component
             'distribution' => 'required|in:fund,all_units,single_unit',
             'single_unit_id' => 'required_if:distribution,single_unit|nullable|exists:units,id',
             'responsible' => 'required|in:owner,tenant,both',
-            'image' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'image_path' => 'nullable|string|max:255',
         ]);
 
         $building = Building::find($this->building_id);
 
-        $attachments = $this->editingId ? Expense::find($this->editingId)?->attachments : null;
-        if ($this->image) {
-            $attachments = [$this->image->store('expenses', 'public')];
-        }
+        $attachments = $this->image_path ? [$this->image_path] : null;
 
         $data = [
             'expense_category_id' => $this->expense_category_id ?: null,
@@ -158,7 +155,7 @@ class Index extends Component
         $this->distribution = 'fund';
         $this->single_unit_id = '';
         $this->responsible = 'owner';
-        $this->image = null;
+        $this->image_path = null;
         $this->resetValidation();
     }
 

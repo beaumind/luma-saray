@@ -104,15 +104,9 @@
             </div>
             <x-input wire:model="tracking_number" label="شماره پیگیری (اختیاری)" />
 
-            <label class="flex flex-col gap-1.5">
-                <span class="text-[12.5px] font-semibold text-[#3f3f46]">تصویر رسید (اختیاری)</span>
-                <input type="file" wire:model="receipt" accept="image/*,application/pdf"
-                       class="rounded-[11px] border border-dashed border-[#d4d4d8] bg-[#fafafa] px-3 py-3 text-[12px] text-[#71717a] file:ml-2 file:rounded-lg file:border-0 file:bg-[#eef0fb] file:px-3 file:py-1.5 file:text-[#5b5bd6]">
-                <span wire:loading wire:target="receipt" class="text-[11px] text-[#a1a1aa]">در حال بارگذاری…</span>
-                @error('receipt')<span class="text-[11.5px] text-[#dc2626]">{{ $message }}</span>@enderror
-            </label>
+            <x-resumable-upload model="receipt_path" folder="receipts" label="تصویر رسید (اختیاری)" />
 
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</button>
+            <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</x-submit-button>
         </form>
     </x-sheet>
 

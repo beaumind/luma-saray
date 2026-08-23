@@ -31,11 +31,8 @@
             <span class="text-[12.5px] text-[#71717a]">مرا به خاطر بسپار</span>
         </label>
 
-        <button type="submit" wire:loading.attr="disabled"
-                class="mt-1 flex h-[50px] items-center justify-center rounded-[13px] bg-[#5b5bd6] text-[15.5px] font-bold text-white shadow-[0_10px_22px_-8px_rgba(91,91,214,.6)] transition hover:bg-[#4f4fca] disabled:opacity-70">
-            <span wire:loading.remove wire:target="authenticate">ورود</span>
-            <span wire:loading wire:target="authenticate">در حال ورود…</span>
-        </button>
+        <x-submit-button target="authenticate" loadingLabel="در حال ورود…"
+                class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15.5px] font-bold text-white shadow-[0_10px_22px_-8px_rgba(91,91,214,.6)] transition hover:bg-[#4f4fca]">ورود</x-submit-button>
     </form>
 
     <div class="text-center text-[12px] text-[#a1a1aa]">

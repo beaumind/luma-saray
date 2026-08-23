@@ -56,7 +56,7 @@
                 <div class="flex-1"><x-jalali-date-input wire:model="move_in_date" label="تاریخ ورود" /></div>
                 <div class="flex-1"><x-jalali-date-input wire:model="move_out_date" label="تاریخ خروج" /></div>
             </div>
-            <button type="submit" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره ساکن</button>
+            <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره ساکن</x-submit-button>
         </form>
     </x-sheet>
 </div>
