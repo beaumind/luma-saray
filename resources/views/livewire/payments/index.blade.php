@@ -10,6 +10,28 @@
     </x-app-header>
 
     <div class="px-4 pt-4">
+        {{-- Filters + export --}}
+        <div class="mb-3 flex flex-col gap-2.5 rounded-[14px] border border-[#ececef] bg-white p-3">
+            <div class="flex gap-2.5">
+                <div class="flex-1"><x-jalali-date-input wire:model.live="from" label="از تاریخ" /></div>
+                <div class="flex-1"><x-jalali-date-input wire:model.live="to" label="تا تاریخ" /></div>
+            </div>
+            @if($buildings->count() > 1)
+                <select wire:model.live="building_id_filter" class="h-[42px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[13px] outline-none focus:border-[#5b5bd6]">
+                    <option value="">همهٔ ساختمان‌ها</option>
+                    @foreach($buildings as $b)<option value="{{ $b->id }}">{{ $b->name }}</option>@endforeach
+                </select>
+            @endif
+            <div class="flex gap-2">
+                <a href="{{ route('payments.export.excel', $exportParams) }}"
+                   class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] border border-[#ececef] bg-white text-[12px] font-bold text-[#3f3f46]"><span class="text-[14px]">⬇</span>اکسل</a>
+                <a href="{{ route('payments.export.pdf', $exportParams) }}"
+                   class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] border border-[#ececef] bg-white text-[12px] font-bold text-[#3f3f46]"><span class="text-[14px]">⬇</span>PDF</a>
+                <button type="button" onclick="exportReportImage('#payments-print','payments.png')"
+                        class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-[11px] border border-[#ececef] bg-white text-[12px] font-bold text-[#3f3f46]"><span class="text-[14px]">⬇</span>تصویر</button>
+            </div>
+        </div>
+
         @if($payments->count() === 0)
             <div class="flex flex-col items-center justify-center gap-3.5 px-8 py-[70px] text-center">
                 <div class="flex h-[74px] w-[74px] items-center justify-center rounded-[22px] bg-[#f4f4f5] text-3xl text-[#c4c4cc]">₪</div>
@@ -149,4 +171,36 @@
             </div>
         @endif
     </x-sheet>
+
+    {{-- Off-screen snapshot used by the image export --}}
+    @php $ptypeLabels = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد']; @endphp
+    <div id="payments-print" aria-hidden="true" dir="rtl"
+         style="position:absolute;left:-9999px;top:0;width:840px;background:#fff;padding:22px;font-family:Vazirmatn,sans-serif;color:#18181b">
+        <div style="text-align:center;font-size:17px;font-weight:800;margin-bottom:4px">گزارش پرداخت‌ها</div>
+        <div style="text-align:center;font-size:12px;color:#71717a;margin-bottom:14px">تعداد: {{ Fmt::fa($printRows->count()) }} — مجموع: {{ Fmt::money($printRows->sum('amount')) }} {{ Fmt::currency() }}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+                <tr style="background:#5b5bd6;color:#fff">
+                    <th style="border:1px solid #cfcfd6;padding:7px">نوع</th>
+                    <th style="border:1px solid #cfcfd6;padding:7px">واحد</th>
+                    <th style="border:1px solid #cfcfd6;padding:7px">ساختمان</th>
+                    <th style="border:1px solid #cfcfd6;padding:7px">هزینهٔ مرتبط</th>
+                    <th style="border:1px solid #cfcfd6;padding:7px">مبلغ</th>
+                    <th style="border:1px solid #cfcfd6;padding:7px">تاریخ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($printRows as $p)
+                    <tr>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $ptypeLabels[$p->type] ?? $p->type }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $p->unit ? Fmt::fa($p->unit->number) : '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $p->unit?->building?->name ?? '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $p->expense?->title ?? '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center;color:#16a34a;font-weight:700">{{ Fmt::money($p->amount) }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center"><x-jdate :value="$p->payment_date" /></td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 </div>

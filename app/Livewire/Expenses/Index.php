@@ -21,6 +21,10 @@ class Index extends Component
 
     public string $building_id_filter = '';
 
+    public string $from = '';
+
+    public string $to = '';
+
     public string $search = '';
 
     public bool $showModal = false;
@@ -58,6 +62,16 @@ class Index extends Component
     }
 
     public function updatingBuildingIdFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedTo(): void
     {
         $this->resetPage();
     }
@@ -161,11 +175,19 @@ class Index extends Component
 
     public function render()
     {
-        $expenses = Expense::with(['building', 'category', 'creator'])
+        $gFrom = JDate::toGregorian($this->from);
+        $gTo = JDate::toGregorian($this->to);
+
+        $base = Expense::query()
             ->when($this->search, fn ($q) => $q->where('title', 'like', "%{$this->search}%"))
             ->when($this->building_id_filter, fn ($q) => $q->where('building_id', $this->building_id_filter))
-            ->orderByDesc('expense_date')
-            ->paginate(15);
+            ->when($gFrom, fn ($q) => $q->whereDate('expense_date', '>=', $gFrom))
+            ->when($gTo, fn ($q) => $q->whereDate('expense_date', '<=', $gTo))
+            ->orderByDesc('expense_date')->orderByDesc('id');
+
+        $expenses = (clone $base)->with(['building', 'category', 'creator'])->paginate(15);
+        // Full filtered set (for the image export snapshot).
+        $printRows = (clone $base)->with(['building', 'category'])->get();
 
         $buildings = Building::where('is_active', true)->get();
         $categories = ExpenseCategory::where('is_active', true)->get();
@@ -176,6 +198,12 @@ class Index extends Component
 
         $detailExpense = $this->detailId ? Expense::with(['building', 'category', 'creator', 'expenseUnits.unit'])->find($this->detailId) : null;
 
-        return view('livewire.expenses.index', compact('expenses', 'buildings', 'categories', 'units', 'detailExpense'));
+        $exportParams = array_filter([
+            'building' => $this->building_id_filter ?: null,
+            'from' => $this->from ?: null,
+            'to' => $this->to ?: null,
+        ]);
+
+        return view('livewire.expenses.index', compact('expenses', 'printRows', 'buildings', 'categories', 'units', 'detailExpense', 'exportParams'));
     }
 }

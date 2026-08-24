@@ -7,7 +7,7 @@
         <span class="text-[12.5px] font-semibold text-[#3f3f46]">{{ $label }}@if($required) <span class="text-[#dc2626]">*</span>@endif</span>
     @endif
 
-    <div class="relative" x-data="{ ...window.jalaliPicker(), val: @entangle($model) }" @keydown.escape="open = false">
+    <div class="relative" x-data="{ ...window.jalaliPicker(), val: @entangle($attributes->wire('model')) }" @keydown.escape="open = false">
         {{-- Trigger --}}
         <button type="button" @click="open = !open"
                 class="flex h-[46px] w-full items-center justify-between rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]"

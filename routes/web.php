@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LedgerExportController;
 use App\Http\Controllers\ReportExportController;
 use App\Http\Controllers\UploadController;
 use App\Livewire\Auth\Login;
@@ -49,8 +50,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/charges', ChargesIndex::class)->name('charges.index');
 
     Route::get('/expenses', ExpensesIndex::class)->name('expenses.index');
+    Route::get('/expenses/export/excel', [LedgerExportController::class, 'expensesExcel'])->name('expenses.export.excel');
+    Route::get('/expenses/export/pdf', [LedgerExportController::class, 'expensesPdf'])->name('expenses.export.pdf');
 
     Route::get('/payments', PaymentsIndex::class)->name('payments.index');
+    Route::get('/payments/export/excel', [LedgerExportController::class, 'paymentsExcel'])->name('payments.export.excel');
+    Route::get('/payments/export/pdf', [LedgerExportController::class, 'paymentsPdf'])->name('payments.export.pdf');
 
     Route::get('/reports', ReportsIndex::class)->name('reports.index');
     Route::get('/reports/export/excel', [ReportExportController::class, 'excel'])->name('reports.export.excel');
