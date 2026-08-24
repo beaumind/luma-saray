@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\StreamsExports;
 use App\Models\Expense;
 use App\Models\Payment;
 use App\Support\Fmt;
@@ -9,23 +10,17 @@ use App\Support\JDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Mpdf\Mpdf;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Excel / PDF exports for the costs (Expenses) and payments lists, honouring the
- * same building + Jalali date-range filters as the on-screen list. The cost PDF
- * embeds the invoice image and any related payments (with their receipts).
+ * same building + Jalali date-range filters as the on-screen list. Costs export
+ * as an organised table; the invoice image is shown as a thumbnail column.
  */
 class LedgerExportController extends Controller
 {
+    use StreamsExports;
+
     // ---- Costs (Expenses) -------------------------------------------------
 
     public function expensesExcel(Request $request): StreamedResponse
@@ -56,12 +51,7 @@ class LedgerExportController extends Controller
 
     public function expensesPdf(Request $request)
     {
-        $rows = $this->expenseQuery($request)
-            ->with(['building', 'category', 'expenseUnits.unit'])
-            ->get()
-            ->each(function (Expense $e) {
-                $e->setRelation('relatedPayments', Payment::with('unit')->where('expense_id', $e->id)->orderBy('payment_date')->get());
-            });
+        $rows = $this->expenseQuery($request)->with(['building', 'category'])->get();
 
         $html = view('exports.expenses', [
             'rows' => $rows,
@@ -165,88 +155,5 @@ class LedgerExportController extends Controller
         $abs = Storage::disk('public')->path($path);
 
         return is_file($abs) ? $abs : null;
-    }
-
-    // ---- Writers ----------------------------------------------------------
-
-    private function streamXlsx(array $data, array $headers, string $sheetTitle, string $slug, ?string $linkColumn = null): StreamedResponse
-    {
-        $spreadsheet = new Spreadsheet;
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setRightToLeft(true);
-        $sheet->setTitle(mb_substr($sheetTitle, 0, 30));
-
-        $letters = [];
-        foreach (range(1, count($headers)) as $i) {
-            $letters[] = Coordinate::stringFromColumnIndex($i);
-        }
-        $last = end($letters);
-
-        foreach ($headers as $i => $label) {
-            $sheet->setCellValue($letters[$i].'1', $label);
-        }
-        $head = $sheet->getStyle("A1:{$last}1");
-        $head->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
-        $head->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('5B5BD6');
-        $head->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-
-        $r = 2;
-        foreach ($data as $row) {
-            $values = array_values($row);
-            foreach ($values as $i => $val) {
-                $coord = $letters[$i].$r;
-                if ($linkColumn !== null && $headers[$i] === $linkColumn && $val) {
-                    $sheet->setCellValue($coord, 'مشاهده');
-                    $sheet->getCell($coord)->getHyperlink()->setUrl($val);
-                    $sheet->getStyle($coord)->getFont()->getColor()->setRGB('5B5BD6');
-                } else {
-                    $sheet->setCellValueExplicit($coord, (string) $val, DataType::TYPE_STRING);
-                }
-                $sheet->getStyle($coord)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            }
-            $r++;
-        }
-
-        foreach ($letters as $letter) {
-            $sheet->getColumnDimension($letter)->setWidth(18);
-        }
-        if ($r > 2) {
-            $sheet->getStyle("A1:{$last}".($r - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        }
-
-        $filename = $slug.'-'.now()->format('Ymd-His').'.xlsx';
-
-        return response()->streamDownload(function () use ($spreadsheet) {
-            (new Xlsx($spreadsheet))->save('php://output');
-        }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
-    }
-
-    private function streamPdf(string $html, string $slug)
-    {
-        $tempDir = storage_path('app/mpdf');
-        if (! is_dir($tempDir)) {
-            @mkdir($tempDir, 0775, true);
-        }
-
-        $mpdf = new Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'directionality' => 'rtl',
-            'autoScriptToLang' => true,
-            'autoLangToFont' => true,
-            'margin_left' => 8,
-            'margin_right' => 8,
-            'margin_top' => 10,
-            'margin_bottom' => 10,
-            'tempDir' => $tempDir,
-        ]);
-        $mpdf->WriteHTML($html);
-
-        $filename = $slug.'-'.now()->format('Ymd-His').'.pdf';
-
-        return response($mpdf->Output($filename, 'S'), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
     }
 }

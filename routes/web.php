@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\LedgerExportController;
 use App\Http\Controllers\ReportExportController;
+use App\Http\Controllers\RosterExportController;
 use App\Http\Controllers\UploadController;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
@@ -43,9 +44,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/buildings/{building}', BuildingsShow::class)->name('buildings.show');
 
     Route::get('/units', UnitsIndex::class)->name('units.index');
+    Route::get('/units/export/excel', [RosterExportController::class, 'unitsExcel'])->name('units.export.excel');
+    Route::get('/units/export/pdf', [RosterExportController::class, 'unitsPdf'])->name('units.export.pdf');
     Route::get('/units/{unit}', UnitsShow::class)->name('units.show');
 
     Route::get('/residents', ResidentsIndex::class)->name('residents.index');
+    Route::get('/residents/export/excel', [RosterExportController::class, 'residentsExcel'])->name('residents.export.excel');
+    Route::get('/residents/export/pdf', [RosterExportController::class, 'residentsPdf'])->name('residents.export.pdf');
 
     Route::get('/charges', ChargesIndex::class)->name('charges.index');
 

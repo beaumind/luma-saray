@@ -10,6 +10,24 @@
     </x-app-header>
 
     <div class="px-4 pt-4">
+        {{-- Filters + export --}}
+        <div class="mb-3 flex flex-col gap-2.5 rounded-[14px] border border-[#ececef] bg-white p-3">
+            <div class="flex gap-2.5">
+                @if($buildings->count() > 1)
+                    <select wire:model.live="building_id" class="h-[42px] flex-1 rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[13px] outline-none focus:border-[#5b5bd6]">
+                        <option value="">همهٔ ساختمان‌ها</option>
+                        @foreach($buildings as $b)<option value="{{ $b->id }}">{{ $b->name }}</option>@endforeach
+                    </select>
+                @endif
+                <select wire:model.live="type_filter" class="h-[42px] flex-1 rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[13px] outline-none focus:border-[#5b5bd6]">
+                    <option value="">مالک و مستأجر</option>
+                    <option value="owner">فقط مالک</option>
+                    <option value="tenant">فقط مستأجر</option>
+                </select>
+            </div>
+            <x-export-buttons :excel="route('residents.export.excel', $exportParams)" :pdf="route('residents.export.pdf', $exportParams)" image="#residents-print" imageName="residents.png" />
+        </div>
+
         <div class="flex flex-col gap-[9px]">
             @forelse($residents as $r)
                 <div class="flex items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px]">
@@ -59,4 +77,33 @@
             <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره ساکن</x-submit-button>
         </form>
     </x-sheet>
+
+    {{-- Off-screen snapshot for the image export --}}
+    <div id="residents-print" aria-hidden="true" dir="rtl"
+         style="position:absolute;left:-9999px;top:0;width:900px;background:#fff;padding:22px;font-family:Vazirmatn,sans-serif;color:#18181b">
+        <div style="text-align:center;font-size:17px;font-weight:800;margin-bottom:4px">گزارش ساکنان</div>
+        <div style="text-align:center;font-size:12px;color:#71717a;margin-bottom:14px">تعداد: {{ Fmt::fa($printRows->count()) }}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead>
+                <tr style="background:#5b5bd6;color:#fff">
+                    @foreach(['نام','واحد','ساختمان','نوع','موبایل','نفرات','تاریخ ورود'] as $h)
+                        <th style="border:1px solid #cfcfd6;padding:7px">{{ $h }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($printRows as $r)
+                    <tr>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $r->name }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $r->unit ? Fmt::fa($r->unit->number) : '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $r->unit?->building?->name ?? '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $r->type === 'owner' ? 'مالک' : 'مستأجر' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center" dir="ltr">{{ $r->mobile ? Fmt::fa($r->mobile) : '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ Fmt::fa((int) $r->resident_count) }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $r->move_in_date ? \App\Support\JDate::toJalali($r->move_in_date) : '—' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 </div>

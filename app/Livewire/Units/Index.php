@@ -149,8 +149,19 @@ class Index extends Component
             ->orderBy('number')
             ->paginate(30);
 
-        $buildings = Building::where('is_active', true)->orderBy('name')->get();
+        $printRows = Unit::query()
+            ->with(['building', 'activeResidents'])
+            ->where('is_active', true)
+            ->when($this->search, fn ($q) => $q->where('number', 'like', "%{$this->search}%"))
+            ->when($this->building_id, fn ($q) => $q->where('building_id', $this->building_id))
+            ->when($this->filter === 'occupied', fn ($q) => $q->whereHas('activeResidents', fn ($r) => $r->where('resident_count', '>', 0)))
+            ->when($this->filter === 'empty', fn ($q) => $q->whereDoesntHave('activeResidents', fn ($r) => $r->where('resident_count', '>', 0)))
+            ->orderBy('building_id')->orderByRaw('LENGTH(number)')->orderBy('number')
+            ->get();
 
-        return view('livewire.units.index', compact('units', 'buildings'));
+        $buildings = Building::where('is_active', true)->orderBy('name')->get();
+        $exportParams = array_filter(['building' => $this->building_id ?: null]);
+
+        return view('livewire.units.index', compact('units', 'printRows', 'buildings', 'exportParams'));
     }
 }

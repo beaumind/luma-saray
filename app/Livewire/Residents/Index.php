@@ -166,9 +166,19 @@ class Index extends Component
             ->orderByRaw("CASE type WHEN 'owner' THEN 0 ELSE 1 END")
             ->paginate(15);
 
+        $printRows = Resident::with(['unit.building'])
+            ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%")->orWhere('mobile', 'like', "%{$this->search}%"))
+            ->when($this->type_filter, fn ($q) => $q->where('type', $this->type_filter))
+            ->when($this->building_id, fn ($q) => $q->whereHas('unit', fn ($uq) => $uq->where('building_id', $this->building_id)))
+            ->where('is_active', true)
+            ->orderBy(Unit::select('number')->whereColumn('units.id', 'residents.unit_id'))
+            ->orderByRaw("CASE type WHEN 'owner' THEN 0 ELSE 1 END")
+            ->get();
+
         $buildings = Building::where('is_active', true)->get();
         $units = Unit::with('building')->where('is_active', true)->orderBy('building_id')->orderByRaw('LENGTH(number)')->orderBy('number')->get();
+        $exportParams = array_filter(['building' => $this->building_id ?: null, 'type' => $this->type_filter ?: null]);
 
-        return view('livewire.residents.index', compact('residents', 'buildings', 'units'));
+        return view('livewire.residents.index', compact('residents', 'printRows', 'buildings', 'units', 'exportParams'));
     }
 }

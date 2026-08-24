@@ -21,6 +21,17 @@
             @endforeach
         </div>
 
+        {{-- Building filter + export --}}
+        <div class="mb-3 flex flex-col gap-2.5 rounded-[14px] border border-[#ececef] bg-white p-3">
+            @if($buildings->count() > 1)
+                <select wire:model.live="building_id" class="h-[42px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[13px] outline-none focus:border-[#5b5bd6]">
+                    <option value="">همهٔ ساختمان‌ها</option>
+                    @foreach($buildings as $b)<option value="{{ $b->id }}">{{ $b->name }}</option>@endforeach
+                </select>
+            @endif
+            <x-export-buttons :excel="route('units.export.excel', $exportParams)" :pdf="route('units.export.pdf', $exportParams)" image="#units-print" imageName="units.png" />
+        </div>
+
         {{-- Unit cards --}}
         <div class="flex flex-col gap-[9px]">
             @forelse($units as $u)
@@ -82,4 +93,39 @@
             <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره واحد</x-submit-button>
         </form>
     </x-sheet>
+
+    {{-- Off-screen snapshot for the image export --}}
+    <div id="units-print" aria-hidden="true" dir="rtl"
+         style="position:absolute;left:-9999px;top:0;width:840px;background:#fff;padding:22px;font-family:Vazirmatn,sans-serif;color:#18181b">
+        <div style="text-align:center;font-size:17px;font-weight:800;margin-bottom:4px">گزارش واحدها</div>
+        <div style="text-align:center;font-size:12px;color:#71717a;margin-bottom:14px">تعداد: {{ Fmt::fa($printRows->count()) }}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+                <tr style="background:#5b5bd6;color:#fff">
+                    @foreach(['واحد','طبقه','ساختمان','مالک','ساکن','نفرات','وضعیت','مانده حساب'] as $h)
+                        <th style="border:1px solid #cfcfd6;padding:7px">{{ $h }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($printRows as $u)
+                    @php
+                        $owner = $u->activeResidents->firstWhere('type', 'owner');
+                        $occupant = $u->activeResidents->sortByDesc('resident_count')->first();
+                        $persons = (int) $u->activeResidents->sum('resident_count');
+                    @endphp
+                    <tr>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ Fmt::fa($u->number) }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $u->floor !== null ? Fmt::fa($u->floor) : '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $u->building?->name ?? '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $owner?->name ?? '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $occupant?->name ?? '—' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ Fmt::fa($persons) }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $persons > 0 ? 'سکونت' : 'خالی' }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ Fmt::money($u->balance) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 </div>
