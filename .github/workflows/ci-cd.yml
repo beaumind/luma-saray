@@ -13,7 +13,7 @@ permissions:
 jobs:
   build-and-push-docker:
     name: Build and Push Docker Image to GHCR
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout Code
@@ -57,7 +57,7 @@ jobs:
 
   deploy:
     name: Deploy Laravel App with Helm
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-and-push-docker
     environment: production
     steps:
