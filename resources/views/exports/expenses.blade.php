@@ -15,7 +15,6 @@
         th, td { border: 0.5px solid #cfcfd6; padding: 5px 4px; text-align: center; vertical-align: middle; }
         th { background: #5b5bd6; color: #fff; font-size: 9px; }
         td.title { text-align: right; }
-        td img { max-width: 60px; max-height: 60px; border-radius: 3px; }
         .amount { color: #dc2626; font-weight: bold; }
         .muted { color: #a1a1aa; font-size: 8px; text-align: center; margin-top: 10px; }
     </style>
@@ -33,7 +32,6 @@
                 <th>تاریخ</th>
                 <th>مبلغ ({{ Fmt::currency() }})</th>
                 <th>تقسیم</th>
-                <th>فاکتور</th>
             </tr>
         </thead>
         <tbody>
@@ -45,16 +43,9 @@
                     <td>{{ JDate::toJalali($e->expense_date) }}</td>
                     <td class="amount">{{ Fmt::fa(number_format(Fmt::display((int) $e->amount))) }}</td>
                     <td>{{ $dist[$e->distribution] ?? $e->distribution }}</td>
-                    <td>
-                        @php $img = null; @endphp
-                        @foreach(($e->attachments ?? []) as $att)
-                            @php $img = $img ?: $localPath($att); @endphp
-                        @endforeach
-                        @if($img)<img src="{{ $img }}">@else—@endif
-                    </td>
                 </tr>
             @empty
-                <tr><td colspan="7">هزینه‌ای در این بازه یافت نشد.</td></tr>
+                <tr><td colspan="6">هزینه‌ای در این بازه یافت نشد.</td></tr>
             @endforelse
         </tbody>
     </table>

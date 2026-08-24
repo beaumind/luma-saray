@@ -9,7 +9,6 @@ use App\Support\Fmt;
 use App\Support\JDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -27,7 +26,7 @@ class LedgerExportController extends Controller
     {
         $rows = $this->expenseQuery($request)->get();
 
-        $headers = ['عنوان', 'ساختمان', 'دسته‌بندی', 'تاریخ', 'مبلغ ('.Fmt::currency().')', 'تقسیم', 'پرداخت‌شده', 'ضمیمه', 'توضیحات'];
+        $headers = ['عنوان', 'ساختمان', 'دسته‌بندی', 'تاریخ', 'مبلغ ('.Fmt::currency().')', 'تقسیم', 'پرداخت‌شده', 'توضیحات'];
         $dist = ['fund' => 'از صندوق', 'all_units' => 'همه واحدها', 'single_unit' => 'یک واحد', 'selected_units' => 'واحدهای منتخب'];
 
         $data = $rows->map(function (Expense $e) use ($dist) {
@@ -41,12 +40,11 @@ class LedgerExportController extends Controller
                 'مبلغ' => number_format(Fmt::display((int) $e->amount)),
                 'تقسیم' => $dist[$e->distribution] ?? $e->distribution,
                 'پرداخت‌شده' => $paid > 0 ? number_format(Fmt::display((int) $paid)) : '—',
-                'ضمیمه' => $this->firstAttachmentUrl($e->attachments),
                 'توضیحات' => $e->description ?? '',
             ];
         })->all();
 
-        return $this->streamXlsx($data, $headers, 'گزارش هزینه‌ها', 'costs', linkColumn: 'ضمیمه');
+        return $this->streamXlsx($data, $headers, 'گزارش هزینه‌ها', 'costs');
     }
 
     public function expensesPdf(Request $request)
@@ -56,7 +54,6 @@ class LedgerExportController extends Controller
         $html = view('exports.expenses', [
             'rows' => $rows,
             'title' => 'گزارش هزینه‌ها'.$this->rangeLabel($request),
-            'localPath' => fn (?string $p) => $this->localImage($p),
         ])->render();
 
         return $this->streamPdf($html, 'costs');
@@ -68,7 +65,7 @@ class LedgerExportController extends Controller
     {
         $rows = $this->paymentQuery($request)->with(['unit.building', 'expense'])->get();
 
-        $headers = ['نوع', 'واحد', 'ساختمان', 'هزینهٔ مرتبط', 'مبلغ ('.Fmt::currency().')', 'تاریخ', 'شماره پیگیری', 'رسید', 'توضیحات'];
+        $headers = ['نوع', 'واحد', 'ساختمان', 'هزینهٔ مرتبط', 'مبلغ ('.Fmt::currency().')', 'تاریخ', 'شماره پیگیری', 'توضیحات'];
         $types = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'];
 
         $data = $rows->map(fn (Payment $p) => [
@@ -79,11 +76,10 @@ class LedgerExportController extends Controller
             'مبلغ' => number_format(Fmt::display((int) $p->amount)),
             'تاریخ' => JDate::toJalali($p->payment_date),
             'شماره پیگیری' => $p->tracking_number ?? '—',
-            'رسید' => $p->receipt_path ? Storage::disk('public')->url($p->receipt_path) : '',
             'توضیحات' => $p->notes ?? '',
         ])->all();
 
-        return $this->streamXlsx($data, $headers, 'گزارش پرداخت‌ها', 'payments', linkColumn: 'رسید');
+        return $this->streamXlsx($data, $headers, 'گزارش پرداخت‌ها', 'payments');
     }
 
     public function paymentsPdf(Request $request)
@@ -93,7 +89,6 @@ class LedgerExportController extends Controller
         $html = view('exports.payments', [
             'rows' => $rows,
             'title' => 'گزارش پرداخت‌ها'.$this->rangeLabel($request),
-            'localPath' => fn (?string $p) => $this->localImage($p),
         ])->render();
 
         return $this->streamPdf($html, 'payments');
@@ -135,25 +130,5 @@ class LedgerExportController extends Controller
         $to = (string) $request->query('to');
 
         return $from || $to ? ' — از '.($from ? Fmt::fa($from) : '…').' تا '.($to ? Fmt::fa($to) : '…') : '';
-    }
-
-    // ---- Attachments ------------------------------------------------------
-
-    private function firstAttachmentUrl(mixed $attachments): string
-    {
-        $first = is_array($attachments) ? ($attachments[0] ?? null) : null;
-
-        return $first ? Storage::disk('public')->url($first) : '';
-    }
-
-    /** Absolute local path for mPDF, only for image files that exist. */
-    private function localImage(?string $path): ?string
-    {
-        if (! $path || ! preg_match('/\.(jpe?g|png|gif|webp)$/i', $path)) {
-            return null;
-        }
-        $abs = Storage::disk('public')->path($path);
-
-        return is_file($abs) ? $abs : null;
     }
 }
