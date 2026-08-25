@@ -70,6 +70,18 @@ class JDate
      *
      * @return array{0: Carbon, 1: Carbon}
      */
+    /**
+     * [firstDay, lastDay] of the current Jalali month as Jalali (Persian-digit)
+     * strings — e.g. ['۱۴۰۵/۰۵/۰۱', '۱۴۰۵/۰۵/۳۱']. Used to default date filters.
+     */
+    public static function thisMonthJalaliRange(): array
+    {
+        $now = Jalalian::now();
+        [$start, $end] = self::gregorianMonthRange((int) $now->getYear(), (int) $now->getMonth());
+
+        return [self::toJalali($start), self::toJalali($end->copy()->subDay())];
+    }
+
     public static function gregorianMonthRange(int $jYear, int $jMonth): array
     {
         $start = Jalalian::fromFormat('Y/m/d', sprintf('%d/%02d/01', $jYear, $jMonth))

@@ -51,6 +51,11 @@ class Index extends Component
 
     public ?string $receipt_path = null;
 
+    public function mount(): void
+    {
+        [$this->from, $this->to] = JDate::thisMonthJalaliRange();
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();
