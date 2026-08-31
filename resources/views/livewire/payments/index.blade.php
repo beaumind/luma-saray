@@ -126,6 +126,16 @@
             </div>
             <x-input wire:model="tracking_number" label="شماره پیگیری (اختیاری)" />
 
+            @if($type === 'unit_credit')
+                <label class="flex cursor-pointer items-start gap-2.5 rounded-[12px] border border-[#e4e4e7] bg-[#fafafa] px-3 py-2.5">
+                    <input wire:model="apply_credit_now" type="checkbox" class="mt-0.5 h-5 w-5 flex-none rounded accent-[#5b5bd6]">
+                    <span>
+                        <span class="block text-[13px] font-semibold text-[#3f3f46]">این مبلغ بلافاصله از بدهی واحد کسر شود</span>
+                        <span class="mt-0.5 block text-[11px] leading-5 text-[#a1a1aa]">اگر تیک بزنید، بستانکاری همین حالا با بدهی واحد تهاتر می‌شود. اگر می‌خواهید بعداً نقداً به واحد پرداخت شود، تیک را بردارید.</span>
+                    </span>
+                </label>
+            @endif
+
             <x-resumable-upload model="receipt_path" folder="receipts" label="تصویر رسید (اختیاری)" />
 
             <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</x-submit-button>

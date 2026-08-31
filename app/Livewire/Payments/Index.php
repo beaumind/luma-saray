@@ -51,6 +51,9 @@ class Index extends Component
 
     public ?string $receipt_path = null;
 
+    /** For unit_credit: offset the unit's debt with the credit immediately. */
+    public bool $apply_credit_now = true;
+
     public function mount(): void
     {
         [$this->from, $this->to] = JDate::thisMonthJalaliRange();
@@ -143,16 +146,24 @@ class Index extends Component
         $unit = $this->unit_id ? Unit::findOrFail((int) $this->unit_id) : null;
         $expense = $this->expense_id ? Expense::findOrFail((int) $this->expense_id) : null;
 
-        match ($this->type) {
+        $payment = match ($this->type) {
             'fund_cost' => $service->registerFundCost($expense, $data),
             'unit_cost' => $service->registerUnitCost($unit, $expense, $data),
             'unit_credit' => $service->registerUnitCredit($unit, $expense, $data),
             default => $service->register($unit, $data),
         };
 
+        // Optionally offset the unit's debt with the credit right away.
+        $applied = 0;
+        if ($this->type === 'unit_credit' && $this->apply_credit_now && $unit) {
+            $applied = $service->applyCredit($unit->fresh(), (int) $payment->amount, $data['payment_date']);
+        }
+
         $this->showModal = false;
         $this->resetForm();
-        session()->flash('success', 'پرداخت با موفقیت ثبت شد.');
+        session()->flash('success', $applied > 0
+            ? 'بستانکاری ثبت و '.Fmt::money($applied).' '.Fmt::currency().' از بدهی واحد کسر شد.'
+            : 'پرداخت با موفقیت ثبت شد.');
     }
 
     private function resetForm(): void
@@ -165,6 +176,7 @@ class Index extends Component
         $this->tracking_number = '';
         $this->notes = '';
         $this->receipt_path = null;
+        $this->apply_credit_now = true;
         $this->resetValidation();
     }
 
