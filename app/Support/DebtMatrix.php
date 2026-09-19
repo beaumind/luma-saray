@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Building;
 use App\Models\Expense;
 use App\Models\LedgerTransaction;
+use App\Models\Payment;
 use App\Models\Unit;
 use Morilog\Jalali\Jalalian;
 
@@ -55,6 +56,17 @@ class DebtMatrix
             : Expense::whereIn('id', $expenseIds)->get(['id', 'title', 'responsible'])->keyBy('id');
         $respLabel = ['owner' => 'مالک واحد', 'tenant' => 'مستأجر واحد', 'both' => 'مالک/مستأجر'];
 
+        // Payment credits reference a Payment row; its type tells us whether the
+        // money settled a specific COST (unit_cost, for an expense) or a charge.
+        // This lets cost-payments settle their cost and charge-payments settle
+        // charges — instead of one blind pool that mis-attributes debt.
+        $paymentIds = $txByUnit->flatten(1)
+            ->filter(fn ($t) => $t->type === 'payment' && $t->direction === 'credit' && $t->reference_id)
+            ->pluck('reference_id')->unique()->values();
+        $paymentMap = $paymentIds->isEmpty()
+            ? collect()
+            : Payment::whereIn('id', $paymentIds)->get(['id', 'type', 'expense_id'])->keyBy('id');
+
         $rows = [];
         foreach ($units as $unit) {
             $txs = $txByUnit->get($unit->id, collect());
@@ -64,28 +76,30 @@ class DebtMatrix
             $latestCharge = ['date' => null, 'amount' => 0];
             $buckets = array_fill(0, count($periods), ['paid' => 0, 'charged' => 0]);
 
-            // Split the ledger into obligations (charge/cost/expense debits) and
-            // the settlement pool (payment credits); standalone creditor entries
-            // are tracked separately and ignored here. Payments are then applied
-            // to obligations oldest-first — a waterfall — so a charge counts as
-            // "paid" once enough money has arrived to cover it, no matter the
-            // exact date the money came in. This lets a payment settle the month
-            // it was meant for (e.g. paying تیر on ۳۱ خرداد) instead of being
-            // stranded in whatever period its payment date happens to fall in.
+            // Obligations split into monthly charges and one-off costs; the
+            // settlement pool split into money that paid a specific cost
+            // (unit_cost payments, keyed by expense) vs. everything else (charge
+            // payments + manual/credit settlements), which forms the charge pool.
             $charges = [];
             $costs = [];
-            $pool = 0;
+            $chargePool = 0;
+            $costPool = []; // expense_id => amount that paid that cost
             $creditStanding = 0; // standing creditor balance (fronted money not yet applied)
             foreach ($txs as $t) {
                 if ($t->direction === 'debit' && $t->type === 'charge') {
-                    $charges[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount];
+                    $charges[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount, 'covered' => 0];
                     if ($latestCharge['date'] === null || $t->transaction_date >= $latestCharge['date']) {
                         $latestCharge = ['date' => $t->transaction_date, 'amount' => (int) $t->amount];
                     }
                 } elseif ($t->direction === 'debit' && in_array($t->type, ['cost', 'expense'])) {
-                    $costs[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount, 'ref' => $t->reference_id];
+                    $costs[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount, 'ref' => $t->reference_id, 'covered' => 0];
                 } elseif ($t->direction === 'credit' && $t->type === 'payment') {
-                    $pool += (int) $t->amount;
+                    $p = $t->reference_id ? $paymentMap->get($t->reference_id) : null;
+                    if ($p && $p->type === 'unit_cost' && $p->expense_id) {
+                        $costPool[$p->expense_id] = ($costPool[$p->expense_id] ?? 0) + (int) $t->amount;
+                    } else {
+                        $chargePool += (int) $t->amount;
+                    }
                 } elseif ($t->direction === 'credit' && $t->type === 'credit') {
                     $creditStanding += (int) $t->amount;
                 } elseif ($t->direction === 'debit' && $t->type === 'credit_used') {
@@ -96,26 +110,63 @@ class DebtMatrix
             usort($charges, fn ($a, $b) => $a['date'] <=> $b['date']);
             usort($costs, fn ($a, $b) => $a['date'] <=> $b['date']);
 
+            // Phase 1 — each cost is settled by the payments made specifically for it.
+            foreach ($costs as &$c) {
+                $avail = $costPool[$c['ref']] ?? 0;
+                $cov = min($avail, $c['amount']);
+                $costPool[$c['ref']] = $avail - $cov;
+                $c['covered'] = $cov;
+            }
+            unset($c);
+
+            // Phase 2 — charge payments cover charges oldest-first.
+            foreach ($charges as &$ch) {
+                $cov = min($chargePool, $ch['amount']);
+                $chargePool -= $cov;
+                $ch['covered'] = $cov;
+            }
+            unset($ch);
+
+            // Phase 3 — genuine leftovers (over-paid charges/costs) spill onto any
+            // still-unpaid obligation, oldest-first, so totals still reconcile.
+            $general = $chargePool + array_sum($costPool);
+            if ($general > 0) {
+                $remaining = [];
+                foreach ($charges as $i => $ch) {
+                    $remaining[] = ['kind' => 'charge', 'i' => $i, 'date' => $ch['date'], 'left' => $ch['amount'] - $ch['covered']];
+                }
+                foreach ($costs as $i => $c) {
+                    $remaining[] = ['kind' => 'cost', 'i' => $i, 'date' => $c['date'], 'left' => $c['amount'] - $c['covered']];
+                }
+                usort($remaining, fn ($a, $b) => $a['date'] <=> $b['date']);
+                foreach ($remaining as $r) {
+                    if ($general <= 0 || $r['left'] <= 0) {
+                        continue;
+                    }
+                    $cov = min($general, $r['left']);
+                    $general -= $cov;
+                    if ($r['kind'] === 'charge') {
+                        $charges[$r['i']]['covered'] += $cov;
+                    } else {
+                        $costs[$r['i']]['covered'] += $cov;
+                    }
+                }
+            }
+
             $pastDebt = 0;
             $totalDebt = 0;
-            // Settlement waterfall: cover monthly CHARGES first (oldest-first), then
-            // one-off COSTS. This way a month a unit actually paid its charge for
-            // stays "paid", and any shortfall lands on the special cost (shown in
-            // its own column) instead of making a paid month look partial.
             foreach ($charges as $d) {
-                $covered = min($pool, $d['amount']);
-                $pool -= $covered;
-                $totalDebt += $d['amount'] - $covered;
-
+                $uncovered = $d['amount'] - $d['covered'];
+                $totalDebt += $uncovered;
                 if ($d['date'] < $windowStart) {
-                    $pastDebt += $d['amount'] - $covered;
+                    $pastDebt += $uncovered;
 
                     continue;
                 }
                 foreach ($periods as $idx => $p) {
                     if ($d['date'] >= $p['start'] && $d['date'] < $p['end']) {
                         $buckets[$idx]['charged'] += $d['amount'];
-                        $buckets[$idx]['paid'] += $covered;
+                        $buckets[$idx]['paid'] += $d['covered'];
                         break;
                     }
                 }
@@ -126,18 +177,15 @@ class DebtMatrix
             $special = ['charged' => 0, 'paid' => 0];
             $specialNotes = [];
             foreach ($costs as $d) {
-                $covered = min($pool, $d['amount']);
-                $pool -= $covered;
-                $uncovered = $d['amount'] - $covered;
+                $uncovered = $d['amount'] - $d['covered'];
                 $totalDebt += $uncovered;
-
                 if ($d['date'] < $windowStart) {
                     $pastDebt += $uncovered;
 
                     continue;
                 }
                 $special['charged'] += $d['amount'];
-                $special['paid'] += $covered;
+                $special['paid'] += $d['covered'];
 
                 if ($uncovered > 0) {
                     $exp = $expenseMap->get($d['ref']);

@@ -7,6 +7,7 @@ use App\Models\Building;
 use App\Models\Unit;
 use App\Services\ExpenseService;
 use App\Services\LedgerService;
+use App\Services\PaymentService;
 use App\Support\DebtMatrix;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -61,5 +62,49 @@ class ReportSpecialCostsTest extends TestCase
         $keys = collect(DebtMatrix::build($b->id, 'monthly', 1)['columns'])->pluck('key');
         $this->assertTrue($keys->contains('special_costs'));
         $this->assertTrue($keys->contains('credit'));
+    }
+
+    public function test_paid_cost_stays_paid_and_unpaid_newest_charge_shows_in_its_month(): void
+    {
+        [$admin, $b] = $this->makeOrg();
+        $unit = Unit::create(['building_id' => $b->id, 'number' => '9']);
+
+        $m2 = now()->subMonthsNoOverflow(2)->startOfMonth()->addDays(9)->format('Y-m-d');
+        $m1 = now()->subMonthNoOverflow()->startOfMonth()->addDays(9)->format('Y-m-d');
+        $m0 = now()->startOfMonth()->addDays(9)->format('Y-m-d');
+
+        // Three monthly charges.
+        app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', $m2);
+        app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', $m1);
+        app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', $m0);
+
+        // An OLD cost, paid via a unit_cost payment (so it must stay "paid").
+        $old = app(ExpenseService::class)->createAndDistribute([
+            'title' => 'oldcost', 'amount' => 5_000_000, 'expense_date' => $m2,
+            'distribution' => 'single_unit', 'responsible' => 'owner', 'unit_ids' => [$unit->id],
+        ], $b);
+        app(PaymentService::class)->registerUnitCost($unit, $old, ['amount' => 5_000_000, 'payment_date' => $m2]);
+
+        // Charge payments for the first two months only (newest charge unpaid).
+        app(PaymentService::class)->register($unit, ['amount' => 8_000_000, 'payment_date' => $m2]);
+        app(PaymentService::class)->register($unit, ['amount' => 8_000_000, 'payment_date' => $m1]);
+
+        // A NEW unpaid cost this month.
+        app(ExpenseService::class)->createAndDistribute([
+            'title' => 'newcost', 'amount' => 3_000_000, 'expense_date' => $m0,
+            'distribution' => 'single_unit', 'responsible' => 'owner', 'unit_ids' => [$unit->id],
+        ], $b);
+
+        $m = DebtMatrix::build($b->id, 'monthly', 3);
+        $row = collect($m['rows'])->firstWhere('number', '9');
+
+        $this->assertSame('paid', $row['months'][0]['state']);   // 2 months ago: paid
+        $this->assertSame('paid', $row['months'][1]['state']);   // last month: paid
+        $this->assertSame('unpaid', $row['months'][2]['state']); // this month: unpaid charge
+        // The old cost stayed paid; the new cost is unpaid — special is partial.
+        $this->assertSame('partial', $row['special_costs']['state']);
+        // The unpaid charge stays in its month, NOT dumped into past debt.
+        $this->assertSame(0, $row['past_debt']);
+        $this->assertSame(11_000_000, $row['total_debt']); // 8,000,000 charge + 3,000,000 new cost
     }
 }
