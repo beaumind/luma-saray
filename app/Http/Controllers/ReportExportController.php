@@ -55,7 +55,9 @@ class ReportExportController extends Controller
             $key === 'count' => (string) $row['count'],
             $key === 'monthly_charge' => $money($row['monthly_charge']),
             $key === 'past_debt' => $money($row['past_debt']),
+            $key === 'special_costs' => $row['special_costs']['value'] > 0 ? $money($row['special_costs']['value']) : '',
             $key === 'total_debt' => $money($row['total_debt']),
+            $key === 'credit' => $row['credit_balance'] > 0 ? $money($row['credit_balance']) : '',
             $key === 'notes' => $row['notes'],
             str_starts_with($key, 'month_') => $money($row['months'][$col['month']]['value']),
             default => '',
@@ -71,8 +73,14 @@ class ReportExportController extends Controller
         if ($key === 'past_debt') {
             return $row['past_debt'] > 0 ? 'FCE5CD' : 'D9EAD3';
         }
+        if ($key === 'special_costs') {
+            return self::STATE_FILL[$row['special_costs']['state']] ?? null;
+        }
         if ($key === 'total_debt') {
             return $row['total_debt'] > 0 ? 'F4CCCC' : 'D9EAD3';
+        }
+        if ($key === 'credit') {
+            return $row['credit_balance'] > 0 ? 'DDE3FB' : null;
         }
 
         return null;

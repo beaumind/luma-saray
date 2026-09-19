@@ -63,9 +63,10 @@ class DebtMatrix
             // stranded in whatever period its payment date happens to fall in.
             $debits = [];
             $pool = 0;
+            $creditStanding = 0; // standing creditor balance (fronted money not yet applied)
             foreach ($txs as $t) {
                 if ($t->direction === 'debit' && in_array($t->type, ['charge', 'cost', 'expense'])) {
-                    $debits[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount];
+                    $debits[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount, 'type' => $t->type];
 
                     // Track the latest single monthly charge for the "شارژ ماهانه" column.
                     if ($t->type === 'charge'
@@ -74,6 +75,10 @@ class DebtMatrix
                     }
                 } elseif ($t->direction === 'credit' && $t->type === 'payment') {
                     $pool += (int) $t->amount;
+                } elseif ($t->direction === 'credit' && $t->type === 'credit') {
+                    $creditStanding += (int) $t->amount;
+                } elseif ($t->direction === 'debit' && $t->type === 'credit_used') {
+                    $creditStanding -= (int) $t->amount;
                 }
             }
 
@@ -81,6 +86,10 @@ class DebtMatrix
 
             $pastDebt = 0;
             $totalDebt = 0;
+            // Non-charge costs (distributed cost/expense shares) are kept OUT of the
+            // monthly charge columns and shown in their own column, so months stay
+            // clean and it's clear what a unit owes for one-off costs vs. charges.
+            $special = ['charged' => 0, 'paid' => 0];
             foreach ($debits as $d) {
                 $covered = min($pool, $d['amount']);
                 $pool -= $covered;
@@ -88,6 +97,12 @@ class DebtMatrix
 
                 if ($d['date'] < $windowStart) {
                     $pastDebt += $d['amount'] - $covered;
+
+                    continue;
+                }
+                if ($d['type'] !== 'charge') {
+                    $special['charged'] += $d['amount'];
+                    $special['paid'] += $covered;
 
                     continue;
                 }
@@ -99,6 +114,10 @@ class DebtMatrix
                     }
                 }
             }
+
+            $scCharged = $special['charged'];
+            $scPaid = $special['paid'];
+            $scState = $scCharged <= 0 ? 'neutral' : ($scPaid >= $scCharged ? 'paid' : ($scPaid <= 0 ? 'unpaid' : 'partial'));
 
             $cells = [];
             foreach ($buckets as $b) {
@@ -124,7 +143,9 @@ class DebtMatrix
                 'monthly_charge' => $latestCharge['amount'],
                 'past_debt' => max($pastDebt, 0),
                 'months' => $cells,
+                'special_costs' => ['value' => $scCharged, 'state' => $scState],
                 'total_debt' => max($totalDebt, 0),
+                'credit_balance' => max($creditStanding, 0),
                 'notes' => $unit->notes ?? '',
             ];
         }
@@ -223,7 +244,9 @@ class DebtMatrix
         foreach ($periods as $i => $p) {
             $cols[] = ['key' => 'month_'.$i, 'label' => $p['label'] ?? '', 'month' => $i];
         }
+        $cols[] = ['key' => 'special_costs', 'label' => 'هزینه‌های ویژه'];
         $cols[] = ['key' => 'total_debt', 'label' => 'مجموع بدهی'];
+        $cols[] = ['key' => 'credit', 'label' => 'بستانکاری'];
         $cols[] = ['key' => 'notes', 'label' => 'توضیحات'];
 
         return $cols;

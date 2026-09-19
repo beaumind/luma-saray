@@ -91,6 +91,8 @@
                                         elseif ($key === 'monthly_charge') { $val = Fmt::money($row['monthly_charge']); }
                                         elseif ($key === 'past_debt') { $val = Fmt::money($row['past_debt']); $bg = $row['past_debt']>0 ? '#ffedd5' : '#dcfce7'; }
                                         elseif ($key === 'total_debt') { $val = Fmt::money($row['total_debt']); $bg = $row['total_debt']>0 ? '#fee2e2':'#dcfce7'; $fg = $row['total_debt']>0?'#dc2626':'#16a34a'; }
+                                        elseif ($key === 'special_costs') { $sc = $row['special_costs']; $val = $sc['value']>0 ? Fmt::money($sc['value']) : ''; $bg = $stateBg[$sc['state']]; $fg = $stateFg[$sc['state']]; }
+                                        elseif ($key === 'credit') { $val = $row['credit_balance']>0 ? Fmt::money($row['credit_balance']) : ''; if ($row['credit_balance']>0) { $bg = '#eef0fb'; $fg = '#5b5bd6'; } }
                                         elseif ($key === 'notes') { $val = $row['notes']; }
                                         elseif (str_starts_with($key, 'month_')) {
                                             $cell = $row['months'][$col['month']];
