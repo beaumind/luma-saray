@@ -7,7 +7,6 @@ use App\Models\Building;
 use App\Models\Unit;
 use App\Services\ExpenseService;
 use App\Services\LedgerService;
-use App\Services\PaymentService;
 use App\Support\DebtMatrix;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,38 +15,50 @@ class ReportSpecialCostsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_costs_go_to_special_column_not_months_and_credit_shows(): void
+    private function makeOrg(): array
     {
         $admin = app(CreateOrganization::class)->handle('Org', 'Admin', '09120000001', 'secret123');
         $this->actingAs($admin);
         $b = Building::create(['name' => 'B', 'address' => 'x', 'city' => 'y']);
-        $payer = Unit::create(['building_id' => $b->id, 'number' => '1']);
-        $other = Unit::create(['building_id' => $b->id, 'number' => '2']);
 
-        // A monthly charge this month for both.
-        $today = now()->format('Y-m-d');
-        app(LedgerService::class)->recordCharge($payer, 6_000_000, 'charge', $today);
-        app(LedgerService::class)->recordCharge($other, 6_000_000, 'charge', $today);
+        return [$admin, $b];
+    }
 
-        // Insurance: all_units/owner → per-unit cost debits; payer fronts full amount as a credit.
+    public function test_paid_charge_stays_green_when_an_older_cost_is_unpaid(): void
+    {
+        [$admin, $b] = $this->makeOrg();
+        $unit = Unit::create(['building_id' => $b->id, 'number' => '1']);
+
+        // A cost dated EARLIER in the month than the charge (would steal coverage
+        // under an oldest-first waterfall), and a payment that exactly covers the charge.
         $exp = app(ExpenseService::class)->createAndDistribute([
-            'title' => 'insurance', 'amount' => 2_000_000, 'expense_date' => $today,
-            'distribution' => 'all_units', 'responsible' => 'owner',
+            'title' => 'insurance', 'amount' => 2_000_000, 'expense_date' => now()->startOfMonth()->format('Y-m-d'),
+            'distribution' => 'single_unit', 'responsible' => 'owner', 'unit_ids' => [$unit->id],
         ], $b);
-        app(PaymentService::class)->registerUnitCredit($payer, $exp, ['amount' => 2_000_000, 'payment_date' => $today]);
+        app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', now()->startOfMonth()->addDays(14)->format('Y-m-d'));
+        app(LedgerService::class)->recordPayment($unit, 8_000_000, 'pay', now()->format('Y-m-d'));
 
         $m = DebtMatrix::build($b->id, 'monthly', 1);
-        $rowPayer = collect($m['rows'])->firstWhere('number', '1');
+        $row = collect($m['rows'])->firstWhere('number', '1');
 
-        // The month cell shows only charge activity (no payment yet → 0 paid),
-        // and is not polluted by the 1,000,000 cost share.
-        $this->assertSame(0, $rowPayer['months'][0]['value']);
-        // special_costs holds the 1,000,000 insurance share.
-        $this->assertSame(1_000_000, $rowPayer['special_costs']['value']);
-        // Payer is a standing creditor for the full fronted amount.
-        $this->assertSame(2_000_000, $rowPayer['credit_balance']);
-        // Column list includes the two new columns.
-        $keys = collect($m['columns'])->pluck('key');
+        // The month's charge is fully covered → paid (green), not partial.
+        $this->assertSame('paid', $row['months'][0]['state']);
+        $this->assertSame(8_000_000, $row['months'][0]['value']);
+        // The insurance share is the unpaid special cost.
+        $this->assertSame('unpaid', $row['special_costs']['state']);
+        $this->assertSame(2_000_000, $row['special_costs']['value']);
+        // Total debt = just the insurance.
+        $this->assertSame(2_000_000, $row['total_debt']);
+        // Description lists the special cost with the responsible party.
+        $this->assertStringContainsString('insurance', $row['notes']);
+        $this->assertStringContainsString('مالک', $row['notes']);
+    }
+
+    public function test_columns_include_special_and_credit(): void
+    {
+        [$admin, $b] = $this->makeOrg();
+        Unit::create(['building_id' => $b->id, 'number' => '1']);
+        $keys = collect(DebtMatrix::build($b->id, 'monthly', 1)['columns'])->pluck('key');
         $this->assertTrue($keys->contains('special_costs'));
         $this->assertTrue($keys->contains('credit'));
     }

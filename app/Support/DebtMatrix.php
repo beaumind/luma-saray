@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Building;
+use App\Models\Expense;
 use App\Models\LedgerTransaction;
 use App\Models\Unit;
 use Morilog\Jalali\Jalalian;
@@ -41,8 +42,18 @@ class DebtMatrix
 
         $txByUnit = LedgerTransaction::query()
             ->whereIn('unit_id', $units->pluck('id'))
-            ->get(['unit_id', 'direction', 'type', 'amount', 'transaction_date'])
+            ->get(['unit_id', 'direction', 'type', 'amount', 'transaction_date', 'reference_id'])
             ->groupBy('unit_id');
+
+        // Titles/responsible party of the expenses behind the cost debits, for
+        // the "special costs" notes (e.g. «… بدهی بابت بیمه ساختمان (مالک)»).
+        $expenseIds = $txByUnit->flatten(1)
+            ->filter(fn ($t) => $t->direction === 'debit' && in_array($t->type, ['cost', 'expense']) && $t->reference_id)
+            ->pluck('reference_id')->unique()->values();
+        $expenseMap = $expenseIds->isEmpty()
+            ? collect()
+            : Expense::whereIn('id', $expenseIds)->get(['id', 'title', 'responsible'])->keyBy('id');
+        $respLabel = ['owner' => 'مالک واحد', 'tenant' => 'مستأجر واحد', 'both' => 'مالک/مستأجر'];
 
         $rows = [];
         foreach ($units as $unit) {
@@ -61,18 +72,18 @@ class DebtMatrix
             // exact date the money came in. This lets a payment settle the month
             // it was meant for (e.g. paying تیر on ۳۱ خرداد) instead of being
             // stranded in whatever period its payment date happens to fall in.
-            $debits = [];
+            $charges = [];
+            $costs = [];
             $pool = 0;
             $creditStanding = 0; // standing creditor balance (fronted money not yet applied)
             foreach ($txs as $t) {
-                if ($t->direction === 'debit' && in_array($t->type, ['charge', 'cost', 'expense'])) {
-                    $debits[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount, 'type' => $t->type];
-
-                    // Track the latest single monthly charge for the "شارژ ماهانه" column.
-                    if ($t->type === 'charge'
-                        && ($latestCharge['date'] === null || $t->transaction_date >= $latestCharge['date'])) {
+                if ($t->direction === 'debit' && $t->type === 'charge') {
+                    $charges[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount];
+                    if ($latestCharge['date'] === null || $t->transaction_date >= $latestCharge['date']) {
                         $latestCharge = ['date' => $t->transaction_date, 'amount' => (int) $t->amount];
                     }
+                } elseif ($t->direction === 'debit' && in_array($t->type, ['cost', 'expense'])) {
+                    $costs[] = ['date' => $t->transaction_date, 'amount' => (int) $t->amount, 'ref' => $t->reference_id];
                 } elseif ($t->direction === 'credit' && $t->type === 'payment') {
                     $pool += (int) $t->amount;
                 } elseif ($t->direction === 'credit' && $t->type === 'credit') {
@@ -82,27 +93,22 @@ class DebtMatrix
                 }
             }
 
-            usort($debits, fn ($a, $b) => $a['date'] <=> $b['date']);
+            usort($charges, fn ($a, $b) => $a['date'] <=> $b['date']);
+            usort($costs, fn ($a, $b) => $a['date'] <=> $b['date']);
 
             $pastDebt = 0;
             $totalDebt = 0;
-            // Non-charge costs (distributed cost/expense shares) are kept OUT of the
-            // monthly charge columns and shown in their own column, so months stay
-            // clean and it's clear what a unit owes for one-off costs vs. charges.
-            $special = ['charged' => 0, 'paid' => 0];
-            foreach ($debits as $d) {
+            // Settlement waterfall: cover monthly CHARGES first (oldest-first), then
+            // one-off COSTS. This way a month a unit actually paid its charge for
+            // stays "paid", and any shortfall lands on the special cost (shown in
+            // its own column) instead of making a paid month look partial.
+            foreach ($charges as $d) {
                 $covered = min($pool, $d['amount']);
                 $pool -= $covered;
                 $totalDebt += $d['amount'] - $covered;
 
                 if ($d['date'] < $windowStart) {
                     $pastDebt += $d['amount'] - $covered;
-
-                    continue;
-                }
-                if ($d['type'] !== 'charge') {
-                    $special['charged'] += $d['amount'];
-                    $special['paid'] += $covered;
 
                     continue;
                 }
@@ -115,9 +121,38 @@ class DebtMatrix
                 }
             }
 
+            // Non-charge costs — kept out of the month columns, shown separately,
+            // and any still-owed share is listed in the description column.
+            $special = ['charged' => 0, 'paid' => 0];
+            $specialNotes = [];
+            foreach ($costs as $d) {
+                $covered = min($pool, $d['amount']);
+                $pool -= $covered;
+                $uncovered = $d['amount'] - $covered;
+                $totalDebt += $uncovered;
+
+                if ($d['date'] < $windowStart) {
+                    $pastDebt += $uncovered;
+
+                    continue;
+                }
+                $special['charged'] += $d['amount'];
+                $special['paid'] += $covered;
+
+                if ($uncovered > 0) {
+                    $exp = $expenseMap->get($d['ref']);
+                    $who = $respLabel[$exp?->responsible] ?? 'مالک واحد';
+                    $specialNotes[] = Fmt::money($uncovered).' '.Fmt::currency().' بدهی بابت '.($exp?->title ?? 'هزینهٔ ویژه').' ('.$who.')';
+                }
+            }
+
             $scCharged = $special['charged'];
             $scPaid = $special['paid'];
             $scState = $scCharged <= 0 ? 'neutral' : ($scPaid >= $scCharged ? 'paid' : ($scPaid <= 0 ? 'unpaid' : 'partial'));
+
+            if ($unit->notes) {
+                $specialNotes[] = $unit->notes;
+            }
 
             $cells = [];
             foreach ($buckets as $b) {
@@ -146,7 +181,7 @@ class DebtMatrix
                 'special_costs' => ['value' => $scCharged, 'state' => $scState],
                 'total_debt' => max($totalDebt, 0),
                 'credit_balance' => max($creditStanding, 0),
-                'notes' => $unit->notes ?? '',
+                'notes' => implode('؛ ', $specialNotes),
             ];
         }
 
