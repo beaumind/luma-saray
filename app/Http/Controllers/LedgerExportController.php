@@ -73,7 +73,8 @@ class LedgerExportController extends Controller
             'واحد' => $p->unit ? Fmt::fa($p->unit->number) : '—',
             'ساختمان' => $p->unit?->building?->name ?? '—',
             'هزینهٔ مرتبط' => $p->expense?->title ?? '—',
-            'مبلغ' => number_format(Fmt::display((int) $p->amount)),
+            // Green in (to fund) / red out (from fund) via the leading +/−.
+            'مبلغ' => ($p->type === 'fund_cost' ? '−' : '+').number_format(Fmt::display((int) $p->amount)),
             'تاریخ' => JDate::toJalali($p->payment_date),
             'شماره پیگیری' => $p->tracking_number ?? '—',
             'توضیحات' => $p->notes ?? '',

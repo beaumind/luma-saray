@@ -49,6 +49,12 @@ trait StreamsExports
                     $sheet->getStyle($coord)->getFont()->getColor()->setRGB('5B5BD6');
                 } else {
                     $sheet->setCellValueExplicit($coord, (string) $val, DataType::TYPE_STRING);
+                    // Signed money (e.g. "+۸۰۰٬۰۰۰" / "−۲٬۰۰۰٬۰۰۰") reads green in, red out.
+                    if (str_starts_with((string) $val, '−')) {
+                        $sheet->getStyle($coord)->getFont()->getColor()->setRGB('DC2626');
+                    } elseif (str_starts_with((string) $val, '+')) {
+                        $sheet->getStyle($coord)->getFont()->getColor()->setRGB('16A34A');
+                    }
                 }
                 $sheet->getStyle($coord)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             }

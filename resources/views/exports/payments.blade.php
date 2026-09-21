@@ -2,6 +2,8 @@
     use App\Support\Fmt;
     use App\Support\JDate;
     $ptype = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'];
+    $toFund = (int) $rows->where('type', '!=', 'fund_cost')->sum('amount');
+    $fromFund = (int) $rows->where('type', 'fund_cost')->sum('amount');
 @endphp
 <!DOCTYPE html>
 <html>
@@ -10,16 +12,25 @@
     <style>
         body { font-family: sans-serif; direction: rtl; color: #18181b; font-size: 9px; }
         h2 { text-align: center; font-size: 15px; margin: 0 0 4px; }
-        .sum { text-align: center; color: #71717a; font-size: 10px; margin-bottom: 12px; }
+        .sum { text-align: center; font-size: 10px; margin-bottom: 12px; }
+        .sum .in { color: #16a34a; }
+        .sum .out { color: #dc2626; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 0.5px solid #cfcfd6; padding: 5px 4px; text-align: center; vertical-align: middle; }
         th { background: #5b5bd6; color: #fff; font-size: 9px; }
         .muted { color: #a1a1aa; font-size: 8px; text-align: center; margin-top: 10px; }
+        .in { color: #16a34a; font-weight: bold; }
+        .out { color: #dc2626; font-weight: bold; }
     </style>
 </head>
 <body>
     <h2>{{ $title }}</h2>
-    <div class="sum">تعداد: {{ Fmt::fa($rows->count()) }} — مجموع مبلغ: {{ Fmt::fa(number_format(Fmt::display((int) $rows->sum('amount')))) }} {{ Fmt::currency() }}</div>
+    <div class="sum">
+        تعداد: {{ Fmt::fa($rows->count()) }} —
+        <span class="in">دریافتی به صندوق: {{ Fmt::fa(number_format(Fmt::display($toFund))) }}</span> —
+        <span class="out">پرداختی از صندوق: {{ Fmt::fa(number_format(Fmt::display($fromFund))) }}</span>
+        {{ Fmt::currency() }}
+    </div>
 
     <table>
         <thead>
@@ -30,12 +41,13 @@
         </thead>
         <tbody>
             @forelse($rows as $p)
+                @php $out = $p->type === 'fund_cost'; @endphp
                 <tr>
                     <td>{{ $ptype[$p->type] ?? $p->type }}</td>
                     <td>{{ $p->unit ? Fmt::fa($p->unit->number) : '—' }}</td>
                     <td>{{ $p->unit?->building?->name ?? '—' }}</td>
                     <td>{{ $p->expense?->title ?? '—' }}</td>
-                    <td>{{ Fmt::fa(number_format(Fmt::display((int) $p->amount))) }}</td>
+                    <td class="{{ $out ? 'out' : 'in' }}">{{ $out ? '−' : '+' }}{{ Fmt::fa(number_format(Fmt::display((int) $p->amount))) }}</td>
                     <td>{{ JDate::toJalali($p->payment_date) }}</td>
                     <td>{{ $p->tracking_number ? Fmt::fa($p->tracking_number) : '—' }}</td>
                 </tr>
