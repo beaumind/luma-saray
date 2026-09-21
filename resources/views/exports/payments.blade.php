@@ -27,8 +27,8 @@
     <h2>{{ $title }}</h2>
     <div class="sum">
         تعداد: {{ Fmt::fa($rows->count()) }} —
-        <span class="in">دریافتی به صندوق: {{ Fmt::fa(number_format(Fmt::display($toFund))) }}</span> —
-        <span class="out">پرداختی از صندوق: {{ Fmt::fa(number_format(Fmt::display($fromFund))) }}</span>
+        <span style="color:#16a34a;font-weight:bold">دریافتی به صندوق: {{ Fmt::fa(number_format(Fmt::display($toFund))) }}</span> —
+        <span style="color:#dc2626;font-weight:bold">پرداختی از صندوق: {{ Fmt::fa(number_format(Fmt::display($fromFund))) }}</span>
         {{ Fmt::currency() }}
     </div>
 
@@ -47,7 +47,7 @@
                     <td>{{ $p->unit ? Fmt::fa($p->unit->number) : '—' }}</td>
                     <td>{{ $p->unit?->building?->name ?? '—' }}</td>
                     <td>{{ $p->expense?->title ?? '—' }}</td>
-                    <td class="{{ $out ? 'out' : 'in' }}">{{ $out ? '−' : '+' }}{{ Fmt::fa(number_format(Fmt::display((int) $p->amount))) }}</td>
+                    <td style="color:{{ $out ? '#dc2626' : '#16a34a' }};font-weight:bold">{{ $out ? '−' : '+' }}{{ Fmt::fa(number_format(Fmt::display((int) $p->amount))) }}</td>
                     <td>{{ JDate::toJalali($p->payment_date) }}</td>
                     <td>{{ $p->tracking_number ? Fmt::fa($p->tracking_number) : '—' }}</td>
                 </tr>
