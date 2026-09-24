@@ -30,9 +30,6 @@ class GenerateMonthlyCharges extends Command
     public function handle(LedgerService $ledger): int
     {
         [$jy, $jm] = $this->targetMonth();
-        [$start, $end] = JDate::gregorianMonthRange($jy, $jm);
-        $chargeDate = $start->format('Y-m-d');
-        $label = self::MONTH_NAMES[$jm - 1].' '.$jy;
 
         $buildings = Building::query()
             ->where('is_active', true)
@@ -53,42 +50,73 @@ class GenerateMonthlyCharges extends Command
             Auth::login($orgUser);
 
             $template = ChargeTemplate::where('building_id', $building->id)
-                ->where('is_active', true)->where('period', 'monthly')
+                ->where('is_active', true)
                 ->latest('id')->first();
 
             if (! $template) {
-                $this->warn("Building {$building->id} ({$building->name}): no active monthly charge template — skipped.");
+                $this->warn("Building {$building->id} ({$building->name}): no active charge template — skipped.");
 
                 continue;
             }
 
-            $created = 0;
+            // A monthly template charges the current month; a seasonal (quarterly)
+            // one charges the whole current Jalali season up front; a yearly one
+            // the whole year — so the debt reflects the configured billing period.
+            $months = $this->monthsForPeriod($template->period, $jy, $jm);
             $units = $building->units()->where('is_active', true)->with('activeResidents')->get();
-            foreach ($units as $unit) {
-                $already = LedgerTransaction::where('unit_id', $unit->id)
-                    ->where('type', 'charge')
-                    ->where('transaction_date', '>=', $start)
-                    ->where('transaction_date', '<', $end)
-                    ->exists();
-                if ($already) {
-                    continue;
-                }
 
-                $amount = $template->calculateForUnit($unit, $chargeDate);
-                if ($amount > 0) {
-                    $ledger->recordCharge($unit, $amount, "شارژ ماهانه {$label}", $chargeDate);
-                    $created++;
+            $created = 0;
+            foreach ($months as [$my, $mm]) {
+                [$start, $end] = JDate::gregorianMonthRange($my, $mm);
+                $chargeDate = $start->format('Y-m-d');
+                $label = self::MONTH_NAMES[$mm - 1].' '.$my;
+
+                foreach ($units as $unit) {
+                    $already = LedgerTransaction::where('unit_id', $unit->id)
+                        ->where('type', 'charge')
+                        ->where('transaction_date', '>=', $start)
+                        ->where('transaction_date', '<', $end)
+                        ->exists();
+                    if ($already) {
+                        continue;
+                    }
+
+                    $amount = $template->calculateForUnit($unit, $chargeDate);
+                    if ($amount > 0) {
+                        $ledger->recordCharge($unit, $amount, "شارژ ماهانه {$label}", $chargeDate);
+                        $created++;
+                    }
                 }
             }
 
-            $this->info("Building {$building->id} ({$building->name}): {$created} charge(s) for {$label}.");
+            $this->info("Building {$building->id} ({$building->name}) [{$template->getPeriodLabel()}]: {$created} charge(s) issued.");
             $total += $created;
         }
 
         Auth::logout();
-        $this->info("Done — {$total} charge(s) issued for {$label}.");
+        $this->info("Done — {$total} charge(s) issued.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The Jalali months to charge for the given reference month, per period:
+     * monthly → that month; quarterly → its whole season; yearly → its whole year.
+     *
+     * @return array<int,array{0:int,1:int}> list of [jYear, jMonth]
+     */
+    private function monthsForPeriod(string $period, int $jy, int $jm): array
+    {
+        if ($period === 'yearly') {
+            return array_map(fn ($m) => [$jy, $m], range(1, 12));
+        }
+        if ($period === 'quarterly') {
+            $seasonStart = intdiv($jm - 1, 3) * 3 + 1;
+
+            return array_map(fn ($m) => [$jy, $m], range($seasonStart, $seasonStart + 2));
+        }
+
+        return [[$jy, $jm]];
     }
 
     /** @return array{0:int,1:int} [jYear, jMonth] */
