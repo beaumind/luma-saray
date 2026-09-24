@@ -26,7 +26,7 @@
                 <tr>
                     @foreach($columns as $col)
                         @php $fill = $controller->fillHex($row, $col); @endphp
-                        <td @if($fill) style="background-color:#{{ $fill }}" @endif>{{ $controller->text($row, $col) }}</td>
+                        <td @if($fill) style="background-color:#{{ $fill }}" @endif>@if($col['key'] === 'notes'){!! nl2br(e($controller->text($row, $col))) !!}@else{{ $controller->text($row, $col) }}@endif</td>
                     @endforeach
                 </tr>
             @endforeach

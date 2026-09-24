@@ -247,7 +247,7 @@ class DebtMatrix
                 'special_costs' => ['value' => $scCharged, 'state' => $scState],
                 'total_debt' => max($totalDebt, 0),
                 'credit_balance' => max($creditStanding, 0),
-                'notes' => implode('؛ ', $noteParts),
+                'notes' => implode("\n", $noteParts),
             ];
         }
 

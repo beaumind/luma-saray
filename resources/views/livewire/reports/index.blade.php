@@ -99,7 +99,7 @@
                                             $val = Fmt::money($cell['value']); $bg = $stateBg[$cell['state']]; $fg = $stateFg[$cell['state']];
                                         }
                                     @endphp
-                                    <td class="border border-[#eee] px-2.5 py-2 text-center font-semibold {{ $key === 'notes' ? 'min-w-[180px] text-right text-[10.5px] leading-5' : 'whitespace-nowrap' }}" style="background:{{ $bg }};color:{{ $fg }}">{{ $val !== '' ? $val : '—' }}</td>
+                                    <td class="border border-[#eee] px-2.5 py-2 text-center font-semibold {{ $key === 'notes' ? 'min-w-[180px] whitespace-pre-line text-right text-[10.5px] leading-5' : 'whitespace-nowrap' }}" style="background:{{ $bg }};color:{{ $fg }}">{{ $val !== '' ? $val : '—' }}</td>
                                 @endforeach
                             </tr>
                         @empty

@@ -5,9 +5,11 @@ namespace App\Console\Commands;
 use App\Models\Building;
 use App\Models\ChargeTemplate;
 use App\Models\LedgerTransaction;
+use App\Models\User;
 use App\Services\LedgerService;
 use App\Support\JDate;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Auth;
 use Morilog\Jalali\Jalalian;
 
 /**
@@ -39,6 +41,17 @@ class GenerateMonthlyCharges extends Command
 
         $total = 0;
         foreach ($buildings as $building) {
+            // Act as a user of this building's org so ledger rows get the right
+            // organization_id / created_by (the trait fills them from auth).
+            $orgUser = User::withoutGlobalScopes()
+                ->where('organization_id', $building->organization_id)->orderBy('id')->first();
+            if (! $orgUser) {
+                $this->warn("Building {$building->id} ({$building->name}): no user in its organization — skipped.");
+
+                continue;
+            }
+            Auth::login($orgUser);
+
             $template = ChargeTemplate::where('building_id', $building->id)
                 ->where('is_active', true)->where('period', 'monthly')
                 ->latest('id')->first();
@@ -72,6 +85,7 @@ class GenerateMonthlyCharges extends Command
             $total += $created;
         }
 
+        Auth::logout();
         $this->info("Done — {$total} charge(s) issued for {$label}.");
 
         return self::SUCCESS;

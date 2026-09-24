@@ -7,6 +7,7 @@ use App\Support\Fmt;
 use Illuminate\Http\Request;
 use Mpdf\Mpdf;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -115,12 +116,16 @@ class ReportExportController extends Controller
         foreach ($matrix['rows'] as $row) {
             foreach ($columns as $i => $col) {
                 $coord = $letters[$i].$rowIndex;
-                $sheet->setCellValue($coord, $this->cellText($row, $col));
+                $sheet->setCellValueExplicit($coord, $this->cellText($row, $col), DataType::TYPE_STRING);
                 $fill = $this->cellFill($row, $col);
                 if ($fill) {
                     $sheet->getStyle($coord)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($fill);
                 }
                 $sheet->getStyle($coord)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                if ($col['key'] === 'notes') {
+                    // Each debt item on its own line within the cell.
+                    $sheet->getStyle($coord)->getAlignment()->setWrapText(true)->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                }
             }
             $rowIndex++;
         }
