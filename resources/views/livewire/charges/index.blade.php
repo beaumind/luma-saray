@@ -53,7 +53,7 @@
                     $amt = $c->type === 'per_resident' ? Fmt::money($c->per_resident_amount).' / نفر' : Fmt::money($c->fixed_amount);
                 @endphp
                 <button wire:click="openApply({{ $c->id }})" type="button" class="flex w-full items-center gap-[11px] border-b border-[#f7f7f8] px-[15px] py-3 text-right">
-                    <div class="min-w-0 flex-1"><div class="truncate text-[13.5px] font-semibold text-[#18181b]">{{ $c->title }}</div><div class="text-[11.5px] text-[#a1a1aa]">{{ $c->building->name }} · {{ $periodLabels[$c->period] ?? $c->period }}</div></div>
+                    <div class="min-w-0 flex-1"><div class="truncate text-[13.5px] font-semibold text-[#18181b]">{{ $c->title }}</div><div class="text-[11.5px] text-[#a1a1aa]">{{ $c->building->name }}@if($c->starts_on && $c->ends_on) · {{ \App\Support\JDate::toJalali($c->starts_on) }} تا {{ \App\Support\JDate::toJalali($c->ends_on) }}@else · {{ $periodLabels[$c->period] ?? $c->period }}@endif</div></div>
                     <div class="text-left"><div class="text-[13.5px] font-bold text-[#18181b]">{{ $amt }}</div><span class="rounded-full px-2 py-[2px] text-[10.5px] font-bold" style="background:{{ $c->is_active ? '#e9f7ef' : '#f4f4f5' }};color:{{ $c->is_active ? '#16a34a' : '#a1a1aa' }}">{{ $c->is_active ? 'فعال' : 'غیرفعال' }}</span></div>
                 </button>
             @empty
@@ -76,20 +76,17 @@
                 @error('tpl_building_id')<span class="text-[11.5px] text-[#dc2626]">{{ $message }}</span>@enderror
             </label>
             <x-input wire:model="title" label="عنوان" />
+            <label class="flex flex-col gap-1.5">
+                <span class="text-[12.5px] font-semibold text-[#3f3f46]">روش محاسبه</span>
+                <select wire:model="type" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
+                    <option value="fixed">ثابت</option><option value="per_resident">هر نفر</option><option value="combined">ترکیبی</option>
+                </select>
+            </label>
             <div class="flex gap-2.5">
-                <label class="flex flex-1 flex-col gap-1.5">
-                    <span class="text-[12.5px] font-semibold text-[#3f3f46]">روش</span>
-                    <select wire:model="type" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
-                        <option value="fixed">ثابت</option><option value="per_resident">هر نفر</option><option value="combined">ترکیبی</option>
-                    </select>
-                </label>
-                <label class="flex flex-1 flex-col gap-1.5">
-                    <span class="text-[12.5px] font-semibold text-[#3f3f46]">دوره</span>
-                    <select wire:model="period" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
-                        <option value="monthly">ماهانه</option><option value="quarterly">فصلی</option><option value="yearly">سالانه</option>
-                    </select>
-                </label>
+                <div class="flex-1"><x-jalali-date-input wire:model="from_date" label="از تاریخ" /></div>
+                <div class="flex-1"><x-jalali-date-input wire:model="to_date" label="تا تاریخ" /></div>
             </div>
+            <p class="-mt-1 text-[11px] leading-5 text-[#a1a1aa]">شارژ برای همهٔ ماه‌های این بازه صادر می‌شود. بازهٔ دو قالب فعال نباید با هم تداخل داشته باشد.</p>
             <div class="flex gap-2.5">
                 <div class="flex-1"><x-money-input wire:model="fixed_amount" label="مبلغ ثابت ({{ \App\Support\Fmt::currency() }})" /></div>
                 <div class="flex-1"><x-money-input wire:model="per_resident_amount" label="مبلغ هر نفر" /></div>

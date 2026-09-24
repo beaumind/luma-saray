@@ -44,6 +44,10 @@ class Index extends Component
 
     public string $per_resident_amount = '';
 
+    public string $from_date = '';
+
+    public string $to_date = '';
+
     public string $description = '';
 
     public function updatingBuildingId(): void
@@ -75,6 +79,8 @@ class Index extends Component
         $this->period = $tpl->period;
         $this->fixed_amount = (string) Fmt::display($tpl->fixed_amount);
         $this->per_resident_amount = (string) Fmt::display($tpl->per_resident_amount);
+        $this->from_date = $tpl->starts_on ? JDate::toJalali($tpl->starts_on) : '';
+        $this->to_date = $tpl->ends_on ? JDate::toJalali($tpl->ends_on) : '';
         $this->description = $tpl->description ?? '';
         $this->showModal = true;
     }
@@ -107,16 +113,50 @@ class Index extends Component
             'tpl_building_id' => 'required|exists:buildings,id',
             'title' => 'required|string|max:200',
             'type' => 'required|in:fixed,per_resident,combined',
-            'period' => 'required|in:monthly,quarterly,yearly',
+            'from_date' => ['required', new JalaliDate],
+            'to_date' => ['required', new JalaliDate],
             'fixed_amount' => 'nullable|integer|min:0',
             'per_resident_amount' => 'nullable|integer|min:0',
         ]);
+
+        // Month-align the effective window: first day of the "from" Jalali month
+        // to the last day of the "to" Jalali month.
+        [$fy, $fm] = $this->jaliMonth($this->from_date);
+        [$ty, $tm] = $this->jaliMonth($this->to_date);
+        if ($ty * 12 + $tm < $fy * 12 + $fm) {
+            $this->addError('to_date', 'تاریخ پایان باید بعد از تاریخ شروع باشد.');
+
+            return;
+        }
+        [$startsOn] = JDate::gregorianMonthRange($fy, $fm);
+        [, $endExclusive] = JDate::gregorianMonthRange($ty, $tm);
+        $startsOn = $startsOn->toDateString();
+        $endsOn = $endExclusive->copy()->subDay()->toDateString();
+
+        // No two active templates for a building may cover overlapping months.
+        $overlap = ChargeTemplate::where('building_id', (int) $this->tpl_building_id)
+            ->where('is_active', true)
+            ->when($this->editingId, fn ($q) => $q->where('id', '!=', $this->editingId))
+            ->whereNotNull('starts_on')->whereNotNull('ends_on')
+            ->whereDate('starts_on', '<=', $endsOn)
+            ->whereDate('ends_on', '>=', $startsOn)
+            ->first();
+        if ($overlap) {
+            $this->addError('to_date', 'این بازه با قالب «'.$overlap->title.'» همپوشانی دارد. بازه‌ها نباید با هم تداخل داشته باشند.');
+
+            return;
+        }
+
+        $months = ($ty * 12 + $tm) - ($fy * 12 + $fm) + 1;
+        $period = $months <= 1 ? 'monthly' : ($months === 3 ? 'quarterly' : ($months === 12 ? 'yearly' : 'monthly'));
 
         $data = [
             'building_id' => (int) $this->tpl_building_id,
             'title' => $this->title,
             'type' => $this->type,
-            'period' => $this->period,
+            'period' => $period,
+            'starts_on' => $startsOn,
+            'ends_on' => $endsOn,
             'fixed_amount' => Fmt::toRial($this->fixed_amount ?: 0),
             'per_resident_amount' => Fmt::toRial($this->per_resident_amount ?: 0),
             'description' => $this->description ?: null,
@@ -148,8 +188,17 @@ class Index extends Component
         $this->period = 'monthly';
         $this->fixed_amount = '';
         $this->per_resident_amount = '';
+        [$this->from_date, $this->to_date] = JDate::thisMonthJalaliRange();
         $this->description = '';
         $this->resetValidation();
+    }
+
+    /** @return array{0:int,1:int} [jYear, jMonth] from a Jalali date string */
+    private function jaliMonth(string $jalali): array
+    {
+        $parts = explode('/', JDate::toLatinDigits(trim($jalali)));
+
+        return [(int) ($parts[0] ?? 0), (int) ($parts[1] ?? 0)];
     }
 
     public function render()

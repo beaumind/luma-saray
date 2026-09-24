@@ -17,6 +17,8 @@ class ChargeTemplate extends Model
         'title',
         'type',
         'period',
+        'starts_on',
+        'ends_on',
         'fixed_amount',
         'per_resident_amount',
         'is_active',
@@ -27,6 +29,8 @@ class ChargeTemplate extends Model
         'is_active' => 'boolean',
         'fixed_amount' => 'integer',
         'per_resident_amount' => 'integer',
+        'starts_on' => 'date',
+        'ends_on' => 'date',
     ];
 
     public function building(): BelongsTo
