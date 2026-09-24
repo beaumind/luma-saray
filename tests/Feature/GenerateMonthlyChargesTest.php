@@ -1,0 +1,49 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Actions\CreateOrganization;
+use App\Models\Building;
+use App\Models\ChargeTemplate;
+use App\Models\LedgerTransaction;
+use App\Models\Resident;
+use App\Models\Unit;
+use App\Support\JDate;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Morilog\Jalali\Jalalian;
+use Tests\TestCase;
+
+class GenerateMonthlyChargesTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_generates_current_month_charge_once_and_is_idempotent(): void
+    {
+        $admin = app(CreateOrganization::class)->handle('Org', 'Admin', '09120000001', 'secret123');
+        $this->actingAs($admin);
+        $b = Building::create(['name' => 'B', 'address' => 'x', 'city' => 'y']);
+        $unit = Unit::create(['building_id' => $b->id, 'number' => '1']);
+        Resident::create(['unit_id' => $unit->id, 'type' => 'owner', 'name' => 'X', 'resident_count' => 2, 'is_active' => true]);
+        ChargeTemplate::create([
+            'building_id' => $b->id, 'title' => 'شارژ ماهانه', 'type' => 'combined', 'period' => 'monthly',
+            'fixed_amount' => 4_000_000, 'per_resident_amount' => 1_000_000, 'is_active' => true,
+        ]);
+
+        $now = Jalalian::now();
+        [$start, $end] = JDate::gregorianMonthRange((int) $now->getYear(), (int) $now->getMonth());
+        $inMonth = fn () => LedgerTransaction::where('unit_id', $unit->id)->where('type', 'charge')
+            ->where('transaction_date', '>=', $start)->where('transaction_date', '<', $end)->count();
+
+        $this->assertSame(0, $inMonth());
+
+        $this->artisan('charges:generate')->assertSuccessful();
+        $this->assertSame(1, $inMonth());
+        // 4,000,000 base + 1,000,000 * 2 persons = 6,000,000
+        $this->assertSame(6_000_000, (int) LedgerTransaction::where('unit_id', $unit->id)->where('type', 'charge')
+            ->where('transaction_date', '>=', $start)->where('transaction_date', '<', $end)->value('amount'));
+
+        // Running again must not double-charge.
+        $this->artisan('charges:generate')->assertSuccessful();
+        $this->assertSame(1, $inMonth());
+    }
+}

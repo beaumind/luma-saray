@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\LedgerTransaction;
 use App\Models\Payment;
 use App\Models\Unit;
+use Illuminate\Support\Carbon;
 use Morilog\Jalali\Jalalian;
 
 /**
@@ -155,11 +156,17 @@ class DebtMatrix
 
             $pastDebt = 0;
             $totalDebt = 0;
+            $pastChargeMonths = []; // Jalali month labels of unpaid pre-window charges
+            $pastCostNotes = [];    // unpaid pre-window cost shares
             foreach ($charges as $d) {
                 $uncovered = $d['amount'] - $d['covered'];
                 $totalDebt += $uncovered;
                 if ($d['date'] < $windowStart) {
                     $pastDebt += $uncovered;
+                    if ($uncovered > 0) {
+                        $j = Jalalian::fromCarbon(Carbon::parse($d['date']));
+                        $pastChargeMonths[] = self::MONTH_NAMES[$j->getMonth() - 1].' '.JDate::toPersianDigits((string) $j->getYear());
+                    }
 
                     continue;
                 }
@@ -179,8 +186,14 @@ class DebtMatrix
             foreach ($costs as $d) {
                 $uncovered = $d['amount'] - $d['covered'];
                 $totalDebt += $uncovered;
+                $exp = $expenseMap->get($d['ref']);
+                $who = $respLabel[$exp?->responsible] ?? 'مالک واحد';
+                $note = fn () => Fmt::money($uncovered).' '.Fmt::currency().' بدهی بابت '.($exp?->title ?? 'هزینهٔ ویژه').' ('.$who.')';
                 if ($d['date'] < $windowStart) {
                     $pastDebt += $uncovered;
+                    if ($uncovered > 0) {
+                        $pastCostNotes[] = $note();
+                    }
 
                     continue;
                 }
@@ -188,9 +201,7 @@ class DebtMatrix
                 $special['paid'] += $d['covered'];
 
                 if ($uncovered > 0) {
-                    $exp = $expenseMap->get($d['ref']);
-                    $who = $respLabel[$exp?->responsible] ?? 'مالک واحد';
-                    $specialNotes[] = Fmt::money($uncovered).' '.Fmt::currency().' بدهی بابت '.($exp?->title ?? 'هزینهٔ ویژه').' ('.$who.')';
+                    $specialNotes[] = $note();
                 }
             }
 
@@ -198,8 +209,15 @@ class DebtMatrix
             $scPaid = $special['paid'];
             $scState = $scCharged <= 0 ? 'neutral' : ($scPaid >= $scCharged ? 'paid' : ($scPaid <= 0 ? 'unpaid' : 'partial'));
 
+            // Description: spell out what the debt is for — past unpaid charge
+            // months, then past unpaid cost shares, then in-window cost shares.
+            $noteParts = [];
+            if ($pastChargeMonths) {
+                $noteParts[] = 'بدهی شارژ: '.implode('، ', $pastChargeMonths);
+            }
+            $noteParts = array_merge($noteParts, $pastCostNotes, $specialNotes);
             if ($unit->notes) {
-                $specialNotes[] = $unit->notes;
+                $noteParts[] = $unit->notes;
             }
 
             $cells = [];
@@ -229,7 +247,7 @@ class DebtMatrix
                 'special_costs' => ['value' => $scCharged, 'state' => $scState],
                 'total_debt' => max($totalDebt, 0),
                 'credit_balance' => max($creditStanding, 0),
-                'notes' => implode('؛ ', $specialNotes),
+                'notes' => implode('؛ ', $noteParts),
             ];
         }
 

@@ -9,7 +9,9 @@ use App\Services\ExpenseService;
 use App\Services\LedgerService;
 use App\Services\PaymentService;
 use App\Support\DebtMatrix;
+use App\Support\JDate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Morilog\Jalali\Jalalian;
 use Tests\TestCase;
 
 class ReportSpecialCostsTest extends TestCase
@@ -25,32 +27,37 @@ class ReportSpecialCostsTest extends TestCase
         return [$admin, $b];
     }
 
+    /** A Gregorian Y-m-d on the given day of the Jalali month $monthsAgo before now. */
+    private function jDate(int $monthsAgo, int $day = 10): string
+    {
+        $j = $monthsAgo > 0 ? Jalalian::now()->subMonths($monthsAgo) : Jalalian::now();
+        [$start] = JDate::gregorianMonthRange((int) $j->getYear(), (int) $j->getMonth());
+
+        return $start->copy()->addDays($day - 1)->format('Y-m-d');
+    }
+
     public function test_paid_charge_stays_green_when_an_older_cost_is_unpaid(): void
     {
         [$admin, $b] = $this->makeOrg();
         $unit = Unit::create(['building_id' => $b->id, 'number' => '1']);
 
-        // A cost dated EARLIER in the month than the charge (would steal coverage
-        // under an oldest-first waterfall), and a payment that exactly covers the charge.
-        $exp = app(ExpenseService::class)->createAndDistribute([
-            'title' => 'insurance', 'amount' => 2_000_000, 'expense_date' => now()->startOfMonth()->format('Y-m-d'),
+        // A cost dated EARLIER in the (Jalali) month than the charge, and a
+        // payment that exactly covers the charge.
+        app(ExpenseService::class)->createAndDistribute([
+            'title' => 'insurance', 'amount' => 2_000_000, 'expense_date' => $this->jDate(0, 2),
             'distribution' => 'single_unit', 'responsible' => 'owner', 'unit_ids' => [$unit->id],
         ], $b);
-        app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', now()->startOfMonth()->addDays(14)->format('Y-m-d'));
-        app(LedgerService::class)->recordPayment($unit, 8_000_000, 'pay', now()->format('Y-m-d'));
+        app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', $this->jDate(0, 15));
+        app(LedgerService::class)->recordPayment($unit, 8_000_000, 'pay', $this->jDate(0, 16));
 
         $m = DebtMatrix::build($b->id, 'monthly', 1);
         $row = collect($m['rows'])->firstWhere('number', '1');
 
-        // The month's charge is fully covered → paid (green), not partial.
         $this->assertSame('paid', $row['months'][0]['state']);
         $this->assertSame(8_000_000, $row['months'][0]['value']);
-        // The insurance share is the unpaid special cost.
         $this->assertSame('unpaid', $row['special_costs']['state']);
         $this->assertSame(2_000_000, $row['special_costs']['value']);
-        // Total debt = just the insurance.
         $this->assertSame(2_000_000, $row['total_debt']);
-        // Description lists the special cost with the responsible party.
         $this->assertStringContainsString('insurance', $row['notes']);
         $this->assertStringContainsString('مالک', $row['notes']);
     }
@@ -69,11 +76,10 @@ class ReportSpecialCostsTest extends TestCase
         [$admin, $b] = $this->makeOrg();
         $unit = Unit::create(['building_id' => $b->id, 'number' => '9']);
 
-        $m2 = now()->subMonthsNoOverflow(2)->startOfMonth()->addDays(9)->format('Y-m-d');
-        $m1 = now()->subMonthNoOverflow()->startOfMonth()->addDays(9)->format('Y-m-d');
-        $m0 = now()->startOfMonth()->addDays(9)->format('Y-m-d');
+        $m2 = $this->jDate(2);
+        $m1 = $this->jDate(1);
+        $m0 = $this->jDate(0);
 
-        // Three monthly charges.
         app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', $m2);
         app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', $m1);
         app(LedgerService::class)->recordCharge($unit, 8_000_000, 'charge', $m0);
@@ -101,10 +107,21 @@ class ReportSpecialCostsTest extends TestCase
         $this->assertSame('paid', $row['months'][0]['state']);   // 2 months ago: paid
         $this->assertSame('paid', $row['months'][1]['state']);   // last month: paid
         $this->assertSame('unpaid', $row['months'][2]['state']); // this month: unpaid charge
-        // The old cost stayed paid; the new cost is unpaid — special is partial.
         $this->assertSame('partial', $row['special_costs']['state']);
-        // The unpaid charge stays in its month, NOT dumped into past debt.
         $this->assertSame(0, $row['past_debt']);
-        $this->assertSame(11_000_000, $row['total_debt']); // 8,000,000 charge + 3,000,000 new cost
+        $this->assertSame(11_000_000, $row['total_debt']);
+    }
+
+    public function test_past_debt_is_itemised_in_the_description(): void
+    {
+        [$admin, $b] = $this->makeOrg();
+        $unit = Unit::create(['building_id' => $b->id, 'number' => '1']);
+
+        // An unpaid charge 3 Jalali months ago — before a 1-month window → past debt.
+        app(LedgerService::class)->recordCharge($unit, 6_000_000, 'charge', $this->jDate(3));
+
+        $row = collect(DebtMatrix::build($b->id, 'monthly', 1)['rows'])->firstWhere('number', '1');
+        $this->assertSame(6_000_000, $row['past_debt']);
+        $this->assertStringContainsString('بدهی شارژ', $row['notes']);
     }
 }
