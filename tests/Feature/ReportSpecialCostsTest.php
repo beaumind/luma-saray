@@ -124,4 +124,17 @@ class ReportSpecialCostsTest extends TestCase
         $this->assertSame(6_000_000, $row['past_debt']);
         $this->assertStringContainsString('بدهی شارژ', $row['notes']);
     }
+
+    public function test_overpayment_shows_as_credit_balance(): void
+    {
+        [$admin, $b] = $this->makeOrg();
+        $unit = Unit::create(['building_id' => $b->id, 'number' => '8']);
+
+        app(LedgerService::class)->recordCharge($unit, 6_000_000, 'charge', $this->jDate(0, 5));
+        app(LedgerService::class)->recordPayment($unit, 8_000_000, 'pay', $this->jDate(0, 6));
+
+        $row = collect(DebtMatrix::build($b->id, 'monthly', 1)['rows'])->firstWhere('number', '8');
+        $this->assertSame(0, $row['total_debt']);
+        $this->assertSame(2_000_000, $row['credit_balance']); // overpaid 8M - 6M
+    }
 }

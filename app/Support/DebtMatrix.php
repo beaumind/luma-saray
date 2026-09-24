@@ -153,6 +153,9 @@ class DebtMatrix
                     }
                 }
             }
+            // Whatever's still unspent is an over-payment — the fund owes it back,
+            // so it counts toward the unit's creditor balance.
+            $overpaid = max(0, $general);
 
             $pastDebt = 0;
             $totalDebt = 0;
@@ -246,7 +249,7 @@ class DebtMatrix
                 'months' => $cells,
                 'special_costs' => ['value' => $scCharged, 'state' => $scState],
                 'total_debt' => max($totalDebt, 0),
-                'credit_balance' => max($creditStanding, 0),
+                'credit_balance' => max($creditStanding, 0) + $overpaid,
                 'notes' => implode("\n", $noteParts),
             ];
         }
