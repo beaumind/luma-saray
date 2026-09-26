@@ -4,47 +4,89 @@
 
     <div class="flex flex-col gap-3.5 px-4 pt-4">
 
+        {{-- Period filter --}}
+        <div class="flex flex-col gap-2.5 rounded-[16px] border border-[#ececef] bg-white p-3">
+            <div class="flex flex-wrap gap-1.5">
+                @foreach(['month' => 'این ماه', 'season' => 'این فصل', 'h1' => 'نیمهٔ اول', 'h2' => 'نیمهٔ دوم', 'year' => 'امسال'] as $key => $label)
+                    <button wire:click="setPreset('{{ $key }}')" type="button"
+                            class="rounded-full border border-[#ececef] bg-[#fafafa] px-3 py-1 text-[12px] font-semibold text-[#3f3f46] hover:border-[#5b5bd6] hover:text-[#5b5bd6]">{{ $label }}</button>
+                @endforeach
+            </div>
+            <div class="flex gap-2.5">
+                <div class="flex-1"><x-jalali-date-input wire:model.live="from" label="از تاریخ" /></div>
+                <div class="flex-1"><x-jalali-date-input wire:model.live="to" label="تا تاریخ" /></div>
+            </div>
+            @if($buildings->count() > 1)
+                <select wire:model.live="building_id" class="h-[42px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[13px] outline-none focus:border-[#5b5bd6]">
+                    <option value="">همهٔ ساختمان‌ها</option>
+                    @foreach($buildings as $b)<option value="{{ $b->id }}">{{ $b->name }}</option>@endforeach
+                </select>
+            @endif
+        </div>
+
         {{-- Balance hero --}}
         <div class="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-[#5b5bd6] to-[#7c6df2] px-[18px] pb-4 pt-[18px] text-white shadow-[0_16px_30px_-14px_rgba(91,91,214,.6)]">
             <div class="absolute -left-8 -top-8 h-[120px] w-[120px] rounded-full bg-white/10"></div>
-            <div class="text-[12.5px] font-medium opacity-85">موجودی حساب ساختمان</div>
-            <div class="mt-1.5 text-[29px] font-extrabold tracking-tight">{{ Fmt::money($balance) }} <span class="text-[14px] font-semibold opacity-80">{{ \App\Support\Fmt::currency() }}</span></div>
+            <div class="text-[12.5px] font-medium opacity-85">موجودی فعلی صندوق</div>
+            <div class="mt-1.5 text-[29px] font-extrabold tracking-tight">{{ Fmt::money($balance) }} <span class="text-[14px] font-semibold opacity-80">{{ Fmt::currency() }}</span></div>
             <div class="mt-3.5 flex gap-2">
                 <div class="flex-1 rounded-[11px] bg-white/15 px-[11px] py-[9px]">
                     <div class="text-[11px] opacity-85">مطالبات معوق</div>
                     <div class="mt-[3px] text-[15px] font-bold">{{ Fmt::money($unpaid) }}</div>
                 </div>
                 <div class="flex-1 rounded-[11px] bg-white/15 px-[11px] py-[9px]">
-                    <div class="text-[11px] opacity-85">درآمد این ماه</div>
-                    <div class="mt-[3px] text-[15px] font-bold">{{ Fmt::money($monthIncome) }}</div>
+                    <div class="text-[11px] opacity-85">دریافتی دوره</div>
+                    <div class="mt-[3px] text-[15px] font-bold">{{ Fmt::money($received) }}</div>
                 </div>
             </div>
         </div>
 
-        {{-- Stat grid --}}
+        {{-- تراز صندوق (balance sheet for the period) --}}
+        <div class="rounded-[16px] border border-[#ececef] bg-white px-[15px] py-3.5">
+            <div class="mb-2 text-[14px] font-bold text-[#18181b]">تراز صندوق — دورهٔ انتخابی</div>
+            <div class="flex items-center justify-between border-b border-[#f4f4f5] py-2 text-[13px]">
+                <span class="text-[#71717a]">موجودی ابتدای دوره</span>
+                <span class="font-semibold text-[#18181b]">{{ Fmt::money($opening) }}</span>
+            </div>
+            <div class="flex items-center justify-between border-b border-[#f4f4f5] py-2 text-[13px]">
+                <span class="text-[#71717a]">+ دریافتی (شارژ و سایر)</span>
+                <span class="font-semibold text-[#16a34a]">{{ Fmt::money($received) }}</span>
+            </div>
+            <div class="flex items-center justify-between border-b border-[#f4f4f5] py-2 text-[13px]">
+                <span class="text-[#71717a]">− پرداخت‌شده از صندوق</span>
+                <span class="font-semibold text-[#dc2626]">{{ Fmt::money($fundOut) }}</span>
+            </div>
+            <div class="mt-1 flex items-center justify-between rounded-[11px] bg-[#f6f6fd] px-3 py-2.5">
+                <span class="text-[13px] font-bold text-[#3f3f46]">= مانده پایان دوره</span>
+                <span class="text-[16px] font-extrabold text-[#5b5bd6]">{{ Fmt::money($ending) }} <span class="text-[11px] font-semibold text-[#a1a1aa]">{{ Fmt::currency() }}</span></span>
+            </div>
+            <p class="mt-2 text-[10.5px] leading-5 text-[#a1a1aa]">«دریافتی» شامل شارژ و سایر واریزی‌هاست. «پرداخت‌شده از صندوق» فقط هزینه‌هایی است که از موجودی صندوق خارج شده (کل هزینه‌های ثبت‌شدهٔ دوره: {{ Fmt::money($expensesRecorded) }} {{ Fmt::currency() }}).</p>
+        </div>
+
+        {{-- Period stat grid --}}
         <div class="grid grid-cols-2 gap-2.5">
             @php
                 $stats = [
-                    ['label' => 'کل واحدها', 'value' => Fmt::fa($totalUnits), 'sub' => Fmt::fa($occupied).' سکونت', 'subColor' => '#16a34a'],
-                    ['label' => 'ساکنان', 'value' => Fmt::fa($residentsTotal), 'sub' => 'نفر', 'subColor' => '#a1a1aa'],
-                    ['label' => 'واحد بدهکار', 'value' => Fmt::fa($debtorCount), 'sub' => 'نیازمند پیگیری', 'subColor' => '#d97706'],
-                    ['label' => 'وصولی ماه', 'value' => '٪'.Fmt::fa($collectionRate), 'sub' => 'این ماه', 'subColor' => '#16a34a'],
+                    ['label' => 'شارژ صادرشده دوره', 'value' => Fmt::money($chargesIssued), 'sub' => 'مبلغ کل شارژ', 'subColor' => '#71717a'],
+                    ['label' => 'وصولی دوره', 'value' => '٪'.Fmt::fa($collectionRate), 'sub' => Fmt::money($receivedCharge).' شارژ', 'subColor' => '#16a34a'],
+                    ['label' => 'واحد بدهکار', 'value' => Fmt::fa($debtorCount).' / '.Fmt::fa($totalUnits), 'sub' => 'نیازمند پیگیری', 'subColor' => '#d97706'],
+                    ['label' => 'ساکنان', 'value' => Fmt::fa($residentsTotal), 'sub' => Fmt::fa($occupied).' واحد پر', 'subColor' => '#a1a1aa'],
                 ];
             @endphp
             @foreach($stats as $s)
                 <div class="rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px]">
                     <div class="text-[12px] font-medium text-[#71717a]">{{ $s['label'] }}</div>
-                    <div class="mt-1 text-[21px] font-extrabold tracking-tight text-[#18181b]">{{ $s['value'] }}</div>
+                    <div class="mt-1 text-[19px] font-extrabold tracking-tight text-[#18181b]">{{ $s['value'] }}</div>
                     <div class="mt-0.5 text-[11px] font-semibold" style="color:{{ $s['subColor'] }}">{{ $s['sub'] }}</div>
                 </div>
             @endforeach
         </div>
 
-        {{-- Income vs expense chart --}}
+        {{-- Income vs expense chart (last 6 months) --}}
         @php $barMax = max(1, collect($bars)->flatMap(fn($b) => [$b['income'], $b['expense']])->max()); @endphp
         <div class="rounded-[16px] border border-[#ececef] bg-white px-[15px] pb-3 pt-[15px]">
             <div class="mb-0.5 flex items-center justify-between">
-                <div class="text-[14px] font-bold text-[#18181b]">درآمد و هزینه</div>
+                <div class="text-[14px] font-bold text-[#18181b]">درآمد و هزینه (۶ ماه)</div>
                 <div class="flex gap-3 text-[11px] text-[#71717a]">
                     <span class="flex items-center gap-1"><span class="h-[9px] w-[9px] rounded-[3px] bg-[#5b5bd6]"></span>درآمد</span>
                     <span class="flex items-center gap-1"><span class="h-[9px] w-[9px] rounded-[3px] bg-[#d4d4d8]"></span>هزینه</span>
@@ -61,29 +103,6 @@
                     </div>
                 @endforeach
             </div>
-        </div>
-
-        {{-- Balance trend sparkline --}}
-        @php
-            $tmax = max(1, max($trend));
-            $tmin = min(0, min($trend));
-            $span = max(1, $tmax - $tmin);
-            $pts = [];
-            foreach ($trend as $i => $v) {
-                $x = 20 + $i * (280 / 5);
-                $y = 82 - (($v - $tmin) / $span) * 66;
-                $pts[] = number_format($x, 1, '.', '').','.number_format($y, 1, '.', '');
-            }
-            $linePts = implode(' ', $pts);
-            $areaPath = 'M20,90 L'.implode(' L', $pts).' L300,90 Z';
-        @endphp
-        <div class="rounded-[16px] border border-[#ececef] bg-white px-[15px] pb-2.5 pt-[15px]">
-            <div class="mb-1.5 text-[14px] font-bold text-[#18181b]">روند موجودی (۶ ماه)</div>
-            <svg viewBox="0 0 320 96" class="block h-auto w-full">
-                <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b5bd6" stop-opacity=".18"></stop><stop offset="1" stop-color="#5b5bd6" stop-opacity="0"></stop></linearGradient></defs>
-                <path d="{{ $areaPath }}" fill="url(#ga)"></path>
-                <polyline points="{{ $linePts }}" fill="none" stroke="#5b5bd6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
-            </svg>
         </div>
 
         {{-- Top debtors --}}

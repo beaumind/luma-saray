@@ -15,36 +15,106 @@ use Morilog\Jalali\Jalalian;
 #[Layout('layouts.app')]
 class Index extends Component
 {
+    public string $from = '';
+
+    public string $to = '';
+
+    public string $building_id = '';
+
+    private const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+
+    public function mount(): void
+    {
+        // Default period: from the start of the current Jalali year to today.
+        $now = Jalalian::now();
+        [$yearStart] = JDate::gregorianMonthRange((int) $now->getYear(), 1);
+        $this->from = JDate::toJalali($yearStart);
+        $this->to = JDate::today();
+    }
+
+    /** Quick period presets. */
+    public function setPreset(string $preset): void
+    {
+        $now = Jalalian::now();
+        $jy = (int) $now->getYear();
+        $jm = (int) $now->getMonth();
+
+        [$from, $to] = match ($preset) {
+            'month' => [[$jy, $jm], [$jy, $jm]],
+            'season' => (function () use ($jy, $jm) {
+                $s = intdiv($jm - 1, 3) * 3 + 1;
+
+                return [[$jy, $s], [$jy, $s + 2]];
+            })(),
+            'h1' => [[$jy, 1], [$jy, 6]],
+            'h2' => [[$jy, 7], [$jy, 12]],
+            default => [[$jy, 1], [$jy, 12]], // year
+        };
+
+        [$gs] = JDate::gregorianMonthRange($from[0], $from[1]);
+        [, $ge] = JDate::gregorianMonthRange($to[0], $to[1]);
+        $this->from = JDate::toJalali($gs);
+        $this->to = JDate::toJalali($ge->copy()->subDay());
+    }
+
     public function render()
     {
         $now = Jalalian::now();
+        $bid = $this->building_id ?: null;
 
-        // Fund cash = opening reserve + money in (charges + unit cost shares +
-        // deposits) minus what the fund paid out for costs.
-        $opening = (int) Building::where('is_active', true)->sum('opening_balance');
-        $inflow = (int) Payment::whereIn('type', ['charge', 'unit_cost', 'deposit'])->sum('amount');
-        $fundOut = (int) Payment::where('type', 'fund_cost')->sum('amount');
-        $balance = $opening + $inflow - $fundOut;
+        $gFrom = JDate::toGregorian($this->from) ?: JDate::gregorianMonthRange((int) $now->getYear(), 1)[0]->toDateString();
+        $gTo = JDate::toGregorian($this->to) ?: now()->toDateString();
 
-        [$monthStart, $monthEnd] = JDate::gregorianMonthRange((int) $now->getYear(), (int) $now->getMonth());
-        $monthEndInclusive = $monthEnd->copy()->subDay();
+        // ---- Fund cash (تراز) for the selected period -------------------------
+        $inTypes = ['charge', 'unit_cost', 'deposit'];
+        $paid = fn (array|string $types, ?string $from, ?string $to) => (int) Payment::query()
+            ->when($bid, fn ($q) => $q->where('building_id', $bid))
+            ->whereIn('type', (array) $types)
+            ->when($from, fn ($q) => $q->whereDate('payment_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('payment_date', '<=', $to))
+            ->sum('amount');
 
-        $monthIncome = (int) Payment::whereIn('type', ['charge', 'unit_cost'])
-            ->whereBetween('payment_date', [$monthStart, $monthEndInclusive])->sum('amount');
-        $monthCharges = (int) LedgerTransaction::where('direction', 'debit')->where('type', 'charge')
-            ->whereBetween('transaction_date', [$monthStart, $monthEndInclusive])->sum('amount');
+        $openingBase = (int) Building::where('is_active', true)
+            ->when($bid, fn ($q) => $q->where('id', $bid))->sum('opening_balance');
 
-        // Unit balances (positive = owed to building).
-        $units = Unit::where('is_active', true)->with(['building', 'activeResidents'])->get();
+        $before = fn (array|string $types) => (int) Payment::query()
+            ->when($bid, fn ($q) => $q->where('building_id', $bid))
+            ->whereIn('type', (array) $types)
+            ->whereDate('payment_date', '<', $gFrom)->sum('amount');
+
+        $opening = $openingBase + $before($inTypes) - $before('fund_cost');
+        $receivedCharge = $paid('charge', $gFrom, $gTo);
+        $receivedOther = $paid(['unit_cost', 'deposit'], $gFrom, $gTo);
+        $received = $receivedCharge + $receivedOther;
+        $fundOut = $paid('fund_cost', $gFrom, $gTo);
+        $ending = $opening + $received - $fundOut;
+
+        // Current cash balance (all-time snapshot).
+        $balanceNow = $openingBase + $paid($inTypes, null, null) - $paid('fund_cost', null, null);
+
+        // ---- Period aggregates ----------------------------------------------
+        $chargesIssued = (int) LedgerTransaction::query()
+            ->when($bid, fn ($q) => $q->where('building_id', $bid))
+            ->where('direction', 'debit')->where('type', 'charge')
+            ->whereDate('transaction_date', '>=', $gFrom)->whereDate('transaction_date', '<=', $gTo)
+            ->sum('amount');
+        $collectionRate = $chargesIssued > 0 ? min(100, (int) round($receivedCharge / $chargesIssued * 100)) : 0;
+
+        $expensesRecorded = (int) Expense::query()
+            ->when($bid, fn ($q) => $q->where('building_id', $bid))
+            ->whereDate('expense_date', '>=', $gFrom)->whereDate('expense_date', '<=', $gTo)->sum('amount');
+
+        // ---- Snapshots (current) --------------------------------------------
+        $units = Unit::where('is_active', true)
+            ->when($bid, fn ($q) => $q->where('building_id', $bid))
+            ->with(['building', 'activeResidents'])->get();
         $unpaid = (int) $units->sum(fn ($u) => max($u->balance, 0));
         $debtorCount = $units->filter(fn ($u) => $u->balance > 0)->count();
-
         $totalUnits = $units->count();
         $occupied = $units->filter(fn ($u) => $u->activeResidents->sum('resident_count') > 0)->count();
         $residentsTotal = (int) $units->sum(fn ($u) => $u->activeResidents->sum('resident_count'));
-        $collectionRate = $monthCharges > 0 ? (int) round($monthIncome / $monthCharges * 100) : 0;
 
-        // Last 6 Jalali months: income (payments) vs expense, and cash-balance trend.
+        // ---- Last 6 Jalali months: income vs expense ------------------------
         $jy = (int) $now->getYear();
         $jm = (int) $now->getMonth();
         $months = [];
@@ -55,55 +125,55 @@ class Index extends Component
                 $jy--;
             }
         }
-        $monthNames = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
-
         $bars = [];
-        $trend = [];
         foreach ($months as [$my, $mm]) {
             [$s, $e] = JDate::gregorianMonthRange($my, $mm);
-            $eIncl = $e->copy()->subDay();
-            $inc = (int) Payment::whereIn('type', ['charge', 'unit_cost'])->whereBetween('payment_date', [$s, $eIncl])->sum('amount');
-            $exp = (int) Expense::whereBetween('expense_date', [$s, $eIncl])->sum('amount');
-            $bars[] = ['m' => mb_substr($monthNames[$mm - 1], 0, 4), 'income' => $inc, 'expense' => $exp];
-
-            $inUpTo = (int) Payment::whereIn('type', ['charge', 'unit_cost', 'deposit'])->where('payment_date', '<', $e)->sum('amount');
-            $outUpTo = (int) Payment::where('type', 'fund_cost')->where('payment_date', '<', $e)->sum('amount');
-            $trend[] = $inUpTo - $outUpTo;
+            $eIncl = $e->copy()->subDay()->toDateString();
+            $sStr = $s->toDateString();
+            $bars[] = [
+                'm' => mb_substr(self::MONTH_NAMES[$mm - 1], 0, 4),
+                'income' => $paid(['charge', 'unit_cost'], $sStr, $eIncl),
+                'expense' => (int) Expense::query()->when($bid, fn ($q) => $q->where('building_id', $bid))
+                    ->whereDate('expense_date', '>=', $sStr)->whereDate('expense_date', '<=', $eIncl)->sum('amount'),
+            ];
         }
 
-        $debtors = $units->filter(fn ($u) => $u->balance > 0)
-            ->sortByDesc('balance')
-            ->take(3)
+        $debtors = $units->filter(fn ($u) => $u->balance > 0)->sortByDesc('balance')->take(4)
             ->map(fn ($u) => [
-                'id' => $u->id,
-                'no' => $u->number,
-                'floor' => $u->floor,
+                'id' => $u->id, 'no' => $u->number, 'floor' => $u->floor,
                 'owner' => $u->activeResidents->first()?->name ?? 'واحد '.$u->number,
                 'amount' => $u->balance,
             ])->values();
 
         $activity = LedgerTransaction::with(['unit'])
-            ->whereIn('type', ['payment', 'expense', 'charge'])
-            ->orderByDesc('transaction_date')->orderByDesc('id')
-            ->take(5)->get()
+            ->when($bid, fn ($q) => $q->where('building_id', $bid))
+            ->whereIn('type', ['payment', 'expense', 'charge', 'cost'])
+            ->orderByDesc('transaction_date')->orderByDesc('id')->take(6)->get()
             ->map(fn ($t) => [
                 'credit' => $t->direction === 'credit',
-                'title' => $t->description ?: ($t->type === 'payment' ? 'پرداخت' : ($t->type === 'expense' ? 'هزینه' : 'شارژ')),
+                'title' => $t->description ?: $t->type,
                 'date' => JDate::toJalali($t->transaction_date),
                 'amount' => $t->amount,
             ]);
 
         return view('livewire.dashboard.index', [
-            'balance' => $balance,
+            'buildings' => Building::where('is_active', true)->orderBy('name')->get(),
+            'balance' => $balanceNow,
+            'opening' => $opening,
+            'received' => $received,
+            'receivedCharge' => $receivedCharge,
+            'receivedOther' => $receivedOther,
+            'fundOut' => $fundOut,
+            'ending' => $ending,
+            'chargesIssued' => $chargesIssued,
+            'collectionRate' => $collectionRate,
+            'expensesRecorded' => $expensesRecorded,
             'unpaid' => $unpaid,
-            'monthIncome' => $monthIncome,
+            'debtorCount' => $debtorCount,
             'totalUnits' => $totalUnits,
             'occupied' => $occupied,
             'residentsTotal' => $residentsTotal,
-            'debtorCount' => $debtorCount,
-            'collectionRate' => $collectionRate,
             'bars' => $bars,
-            'trend' => $trend,
             'debtors' => $debtors,
             'activity' => $activity,
             'todayLabel' => JDate::toPersianDigits($now->format('l j F Y')),
