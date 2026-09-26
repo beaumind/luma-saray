@@ -2,8 +2,21 @@
     use App\Support\Fmt;
     use App\Support\JDate;
     $ptype = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'];
-    $toFund = (int) $rows->where('type', '!=', 'fund_cost')->sum('amount');
-    $fromFund = (int) $rows->where('type', 'fund_cost')->sum('amount');
+    $by = fn ($t) => (int) $rows->where('type', $t)->sum('amount');
+    $cnt = fn ($t) => $rows->where('type', $t)->count();
+    $toFund = $by('charge') + $by('unit_cost') + $by('deposit');
+    $fromFund = $by('fund_cost');
+    $credit = $by('unit_credit');
+    $net = $toFund - $fromFund;
+    $m = fn ($v) => Fmt::fa(number_format(Fmt::display((int) $v)));
+    // Per-type rows shown in the summary: [label, amount, count, colour, direction]
+    $summaryRows = [
+        ['شارژ دریافتی', $by('charge'), $cnt('charge'), '#16a34a', '+'],
+        ['هزینهٔ واحد (دریافتی)', $by('unit_cost'), $cnt('unit_cost'), '#16a34a', '+'],
+        ['واریز/سایر', $by('deposit'), $cnt('deposit'), '#16a34a', '+'],
+        ['بستانکاری واحد', $by('unit_credit'), $cnt('unit_credit'), '#5b5bd6', ''],
+        ['پرداخت از صندوق', $by('fund_cost'), $cnt('fund_cost'), '#dc2626', '−'],
+    ];
 @endphp
 <!DOCTYPE html>
 <html>
@@ -25,12 +38,40 @@
 </head>
 <body>
     <h2>{{ $title }}</h2>
-    <div class="sum">
-        تعداد: {{ Fmt::fa($rows->count()) }} —
-        <span style="color:#16a34a;font-weight:bold">دریافتی به صندوق: {{ Fmt::fa(number_format(Fmt::display($toFund))) }}</span> —
-        <span style="color:#dc2626;font-weight:bold">پرداختی از صندوق: {{ Fmt::fa(number_format(Fmt::display($fromFund))) }}</span>
-        {{ Fmt::currency() }}
-    </div>
+
+    {{-- Aggregated summary --}}
+    <table style="width:100%;margin-bottom:6px;border-collapse:separate;border-spacing:5px 0">
+        <tr>
+            <td style="width:33%;border:0.75px solid #bbe7cb;background:#f3fbf6;border-radius:6px;padding:7px;text-align:center">
+                <div style="font-size:9px;color:#71717a">مجموع دریافتی به صندوق</div>
+                <div style="font-size:13px;font-weight:bold;color:#16a34a">{{ $m($toFund) }}</div>
+            </td>
+            <td style="width:33%;border:0.75px solid #f0c9c9;background:#fdf3f3;border-radius:6px;padding:7px;text-align:center">
+                <div style="font-size:9px;color:#71717a">مجموع پرداختی از صندوق</div>
+                <div style="font-size:13px;font-weight:bold;color:#dc2626">{{ $m($fromFund) }}</div>
+            </td>
+            <td style="width:33%;border:0.75px solid #cfd0f2;background:#f6f6fd;border-radius:6px;padding:7px;text-align:center">
+                <div style="font-size:9px;color:#71717a">خالص جریان صندوق</div>
+                <div style="font-size:13px;font-weight:bold;color:{{ $net >= 0 ? '#16a34a' : '#dc2626' }}">{{ $net >= 0 ? '+' : '−' }}{{ $m(abs($net)) }}</div>
+            </td>
+        </tr>
+    </table>
+
+    {{-- Per-type breakdown --}}
+    <table style="margin-bottom:12px">
+        <thead><tr><th>نوع پرداخت</th><th>تعداد</th><th>مبلغ ({{ Fmt::currency() }})</th></tr></thead>
+        <tbody>
+            @foreach($summaryRows as [$label, $amount, $count, $color, $sign])
+                <tr>
+                    <td style="text-align:right">{{ $label }}</td>
+                    <td>{{ Fmt::fa($count) }}</td>
+                    <td style="color:{{ $color }};font-weight:bold">{{ $sign }}{{ $m($amount) }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <div class="muted" style="margin:0 0 6px">— ریز تراکنش‌ها ({{ Fmt::fa($rows->count()) }} مورد) —</div>
 
     <table>
         <thead>

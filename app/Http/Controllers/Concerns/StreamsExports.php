@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 trait StreamsExports
 {
-    private function streamXlsx(array $data, array $headers, string $sheetTitle, string $slug, ?string $linkColumn = null): StreamedResponse
+    private function streamXlsx(array $data, array $headers, string $sheetTitle, string $slug, ?string $linkColumn = null, array $summary = []): StreamedResponse
     {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
@@ -31,15 +31,32 @@ trait StreamsExports
         }
         $lastColumn = end($letters);
 
-        foreach ($headers as $i => $label) {
-            $sheet->setCellValue($letters[$i].'1', $label);
+        // Optional aggregated summary block above the table: [label, value, rgb?].
+        $top = 1;
+        foreach ($summary as $item) {
+            $sheet->setCellValue("A{$top}", (string) ($item['label'] ?? ''));
+            $sheet->getStyle("A{$top}")->getFont()->setBold(true);
+            $sheet->setCellValueExplicit("B{$top}", (string) ($item['value'] ?? ''), DataType::TYPE_STRING);
+            $sheet->getStyle("B{$top}")->getFont()->setBold(true);
+            if (! empty($item['rgb'])) {
+                $sheet->getStyle("B{$top}")->getFont()->getColor()->setRGB($item['rgb']);
+            }
+            $top++;
         }
-        $head = $sheet->getStyle("A1:{$lastColumn}1");
+        if ($summary) {
+            $top++; // blank spacer row
+        }
+        $headerRow = $top;
+
+        foreach ($headers as $i => $label) {
+            $sheet->setCellValue($letters[$i].$headerRow, $label);
+        }
+        $head = $sheet->getStyle("A{$headerRow}:{$lastColumn}{$headerRow}");
         $head->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
         $head->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('5B5BD6');
         $head->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        $r = 2;
+        $r = $headerRow + 1;
         foreach ($data as $row) {
             foreach (array_values($row) as $i => $val) {
                 $coord = $letters[$i].$r;
@@ -64,8 +81,8 @@ trait StreamsExports
         foreach ($letters as $letter) {
             $sheet->getColumnDimension($letter)->setWidth(18);
         }
-        if ($r > 2) {
-            $sheet->getStyle("A1:{$lastColumn}".($r - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        if ($r > $headerRow + 1) {
+            $sheet->getStyle("A{$headerRow}:{$lastColumn}".($r - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         }
 
         $filename = $slug.'-'.now()->format('Ymd-His').'.xlsx';

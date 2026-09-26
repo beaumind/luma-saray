@@ -80,7 +80,17 @@ class LedgerExportController extends Controller
             'توضیحات' => $p->notes ?? '',
         ])->all();
 
-        return $this->streamXlsx($data, $headers, 'گزارش پرداخت‌ها', 'payments');
+        $by = fn ($t) => (int) $rows->where('type', $t)->sum('amount');
+        $toFund = $by('charge') + $by('unit_cost') + $by('deposit');
+        $net = $toFund - $by('fund_cost');
+        $summary = [
+            ['label' => 'مجموع دریافتی به صندوق', 'value' => '+'.number_format(Fmt::display($toFund)), 'rgb' => '16A34A'],
+            ['label' => 'مجموع پرداختی از صندوق', 'value' => '−'.number_format(Fmt::display($by('fund_cost'))), 'rgb' => 'DC2626'],
+            ['label' => 'خالص جریان صندوق', 'value' => ($net >= 0 ? '+' : '−').number_format(Fmt::display(abs($net))), 'rgb' => $net >= 0 ? '16A34A' : 'DC2626'],
+            ['label' => 'بستانکاری واحد', 'value' => number_format(Fmt::display($by('unit_credit'))), 'rgb' => '5B5BD6'],
+        ];
+
+        return $this->streamXlsx($data, $headers, 'گزارش پرداخت‌ها', 'payments', summary: $summary);
     }
 
     public function paymentsPdf(Request $request)

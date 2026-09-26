@@ -183,11 +183,56 @@
     </x-sheet>
 
     {{-- Off-screen snapshot used by the image export --}}
-    @php $ptypeLabels = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد']; @endphp
+    @php
+        $ptypeLabels = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'];
+        $by = fn ($t) => (int) $printRows->where('type', $t)->sum('amount');
+        $cnt = fn ($t) => $printRows->where('type', $t)->count();
+        $pToFund = $by('charge') + $by('unit_cost') + $by('deposit');
+        $pFromFund = $by('fund_cost');
+        $pNet = $pToFund - $pFromFund;
+        $pSummary = [
+            ['شارژ دریافتی', $by('charge'), $cnt('charge'), '#16a34a', '+'],
+            ['هزینهٔ واحد (دریافتی)', $by('unit_cost'), $cnt('unit_cost'), '#16a34a', '+'],
+            ['واریز/سایر', $by('deposit'), $cnt('deposit'), '#16a34a', '+'],
+            ['بستانکاری واحد', $by('unit_credit'), $cnt('unit_credit'), '#5b5bd6', ''],
+            ['پرداخت از صندوق', $by('fund_cost'), $cnt('fund_cost'), '#dc2626', '−'],
+        ];
+    @endphp
     <div id="payments-print" aria-hidden="true" dir="rtl"
          style="position:absolute;left:-9999px;top:0;width:840px;background:#fff;padding:22px;font-family:Vazirmatn,sans-serif;color:#18181b">
-        <div style="text-align:center;font-size:17px;font-weight:800;margin-bottom:4px">گزارش پرداخت‌ها</div>
-        <div style="text-align:center;font-size:12px;color:#71717a;margin-bottom:14px">تعداد: {{ Fmt::fa($printRows->count()) }} — مجموع: {{ Fmt::money($printRows->sum('amount')) }} {{ Fmt::currency() }}</div>
+        <div style="text-align:center;font-size:17px;font-weight:800;margin-bottom:12px">گزارش پرداخت‌ها ({{ Fmt::fa($printRows->count()) }} مورد)</div>
+
+        {{-- Aggregated summary --}}
+        <table style="width:100%;margin-bottom:10px;border-collapse:separate;border-spacing:8px 0">
+            <tr>
+                <td style="width:33%;border:1.5px solid #bbe7cb;background:#f3fbf6;border-radius:10px;padding:11px;text-align:center">
+                    <div style="font-size:11px;color:#71717a">مجموع دریافتی به صندوق</div>
+                    <div style="font-size:17px;font-weight:800;color:#16a34a">+{{ Fmt::money($pToFund) }}</div>
+                </td>
+                <td style="width:33%;border:1.5px solid #f0c9c9;background:#fdf3f3;border-radius:10px;padding:11px;text-align:center">
+                    <div style="font-size:11px;color:#71717a">مجموع پرداختی از صندوق</div>
+                    <div style="font-size:17px;font-weight:800;color:#dc2626">−{{ Fmt::money($pFromFund) }}</div>
+                </td>
+                <td style="width:33%;border:1.5px solid #cfd0f2;background:#f6f6fd;border-radius:10px;padding:11px;text-align:center">
+                    <div style="font-size:11px;color:#71717a">خالص جریان صندوق</div>
+                    <div style="font-size:17px;font-weight:800;color:{{ $pNet >= 0 ? '#16a34a' : '#dc2626' }}">{{ $pNet >= 0 ? '+' : '−' }}{{ Fmt::money(abs($pNet)) }}</div>
+                </td>
+            </tr>
+        </table>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">
+            <thead><tr style="background:#eef0fb;color:#3f3f46"><th style="border:1px solid #d9dcf5;padding:6px">نوع پرداخت</th><th style="border:1px solid #d9dcf5;padding:6px">تعداد</th><th style="border:1px solid #d9dcf5;padding:6px">مبلغ ({{ Fmt::currency() }})</th></tr></thead>
+            <tbody>
+                @foreach($pSummary as [$label, $amount, $count, $color, $sign])
+                    <tr>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:right">{{ $label }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ Fmt::fa($count) }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center;color:{{ $color }};font-weight:700">{{ $sign }}{{ Fmt::money($amount) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <div style="font-size:12px;font-weight:700;color:#3f3f46;margin-bottom:6px">ریز تراکنش‌ها</div>
         <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
                 <tr style="background:#5b5bd6;color:#fff">
@@ -201,12 +246,13 @@
             </thead>
             <tbody>
                 @foreach($printRows as $p)
+                    @php $out = $p->type === 'fund_cost'; @endphp
                     <tr>
                         <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $ptypeLabels[$p->type] ?? $p->type }}</td>
                         <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $p->unit ? Fmt::fa($p->unit->number) : '—' }}</td>
                         <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $p->unit?->building?->name ?? '—' }}</td>
                         <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $p->expense?->title ?? '—' }}</td>
-                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center;color:#16a34a;font-weight:700">{{ Fmt::money($p->amount) }}</td>
+                        <td style="border:1px solid #e4e4e7;padding:6px;text-align:center;font-weight:700;color:{{ $out ? '#dc2626' : '#16a34a' }}">{{ $out ? '−' : '+' }}{{ Fmt::money($p->amount) }}</td>
                         <td style="border:1px solid #e4e4e7;padding:6px;text-align:center"><x-jdate :value="$p->payment_date" /></td>
                     </tr>
                 @endforeach
