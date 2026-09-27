@@ -51,7 +51,6 @@
                 <span class="text-[13px] font-bold text-[#3f3f46]">= {{ $deficit ? 'کسری پایان دوره (بدهکار)' : 'مانده پایان دوره' }}</span>
                 <span class="text-[16px] font-extrabold" style="color:{{ $deficit ? '#dc2626' : '#5b5bd6' }}">{{ $deficit ? '−' : '' }}{{ Fmt::money($ending) }} <span class="text-[11px] font-semibold text-[#a1a1aa]">{{ Fmt::currency() }}</span></span>
             </div>
-            <p class="mt-2 text-[10.5px] leading-5 text-[#a1a1aa]">«دریافتی» شامل شارژ و سایر واریزی‌هاست. «کل هزینه‌ها» همهٔ هزینه‌های ثبت‌شدهٔ دوره است؛ از این مقدار {{ Fmt::money($fundOut) }} از صندوق پرداخت شده و مابقی ({{ Fmt::money($expensesTotal - $fundOut) }}) در انتظار پرداخت یا توسط مالکین. موجودی نقدی صندوق در پایان دوره: <span style="color:{{ $periodCash < 0 ? '#dc2626' : '#16a34a' }};font-weight:bold">{{ $periodCash < 0 ? '−' : '' }}{{ Fmt::money($periodCash) }}</span> {{ Fmt::currency() }} (تفاوت با کسری بالا به‌دلیل هزینه‌های هنوز پرداخت‌نشده از صندوق است).</p>
         </x-dash-card>
 
         {{-- Money flow: inflows / outflow --}}
