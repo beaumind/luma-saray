@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Actions\CreateOrganization;
 use App\Livewire\Dashboard\Index as Dashboard;
 use App\Models\Building;
+use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\Unit;
 use App\Support\JDate;
@@ -34,17 +35,22 @@ class DashboardBalanceTest extends TestCase
             'type' => $type, 'amount' => $amount, 'payment_date' => $date, 'created_by' => $admin->id,
         ]);
 
-        $pay('charge', 5_000_000, $before);     // before period → opening
-        $pay('charge', 3_000_000, $inPeriod);   // received in period
+        $pay('charge', 5_000_000, $before);      // before period → opening
+        $pay('charge', 3_000_000, $inPeriod);    // received in period
         $pay('fund_cost', 2_000_000, $inPeriod); // paid from fund in period
+        Expense::create([
+            'building_id' => $b->id, 'created_by' => $admin->id, 'title' => 'x', 'amount' => 4_000_000,
+            'expense_date' => $inPeriod, 'distribution' => 'fund', 'responsible' => 'both',
+        ]); // total recorded expense (more than what left the fund)
 
         Livewire::test(Dashboard::class)
             ->set('from', JDate::toJalali($s))
             ->set('to', JDate::toJalali($e->copy()->subDay()))
-            ->assertViewHas('opening', 15_000_000)   // 10M setting + 5M before
+            ->assertViewHas('opening', 15_000_000)     // 10M setting + 5M before
             ->assertViewHas('received', 3_000_000)
-            ->assertViewHas('fundOut', 2_000_000)
-            ->assertViewHas('ending', 16_000_000)    // 15 + 3 - 2
-            ->assertViewHas('balance', 16_000_000);  // all-time cash
+            ->assertViewHas('fundOut', 2_000_000)       // cash out (for the note)
+            ->assertViewHas('expensesTotal', 4_000_000) // total recorded expense
+            ->assertViewHas('ending', 14_000_000)       // 15 + 3 − 4 (period statement)
+            ->assertViewHas('balance', 16_000_000);     // all-time cash unchanged
     }
 }

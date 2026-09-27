@@ -42,14 +42,16 @@
         </div>
 
         {{-- تراز صندوق --}}
+        @php $deficit = $ending < 0; @endphp
         <x-dash-card title="تراز صندوق — دورهٔ انتخابی">
             <x-dash-row label="موجودی ابتدای دوره" :value="Fmt::money($opening)" />
             <x-dash-row label="+ دریافتی (شارژ و سایر)" :value="Fmt::money($received)" color="#16a34a" />
-            <x-dash-row label="− پرداخت‌شده از صندوق" :value="Fmt::money($fundOut)" color="#dc2626" />
-            <div class="mt-1 flex items-center justify-between rounded-[11px] bg-[#f6f6fd] px-3 py-2.5">
-                <span class="text-[13px] font-bold text-[#3f3f46]">= مانده پایان دوره</span>
-                <span class="text-[16px] font-extrabold text-[#5b5bd6]">{{ Fmt::money($ending) }} <span class="text-[11px] font-semibold text-[#a1a1aa]">{{ Fmt::currency() }}</span></span>
+            <x-dash-row label="− کل هزینه‌های دوره" :value="Fmt::money($expensesTotal)" color="#dc2626" />
+            <div class="mt-1 flex items-center justify-between rounded-[11px] px-3 py-2.5" style="background:{{ $deficit ? '#fdf3f3' : '#f6f6fd' }}">
+                <span class="text-[13px] font-bold text-[#3f3f46]">= {{ $deficit ? 'کسری پایان دوره (بدهکار)' : 'مانده پایان دوره' }}</span>
+                <span class="text-[16px] font-extrabold" style="color:{{ $deficit ? '#dc2626' : '#5b5bd6' }}">{{ $deficit ? '−' : '' }}{{ Fmt::money($ending) }} <span class="text-[11px] font-semibold text-[#a1a1aa]">{{ Fmt::currency() }}</span></span>
             </div>
+            <p class="mt-2 text-[10.5px] leading-5 text-[#a1a1aa]">«دریافتی» شامل شارژ و سایر واریزی‌هاست. «کل هزینه‌ها» همهٔ هزینه‌های ثبت‌شدهٔ دوره است (از این مقدار {{ Fmt::money($fundOut) }} از صندوق پرداخت شده و مابقی در انتظار پرداخت یا توسط مالکین). موجودی نقدی فعلی صندوق: {{ Fmt::money($balance) }} {{ Fmt::currency() }}.</p>
         </x-dash-card>
 
         {{-- Money flow: inflows / outflow --}}

@@ -91,7 +91,6 @@ class Index extends Component
 
         $received = $pt('charge') + $pt('unit_cost') + $pt('deposit');
         $fundOut = $pt('fund_cost');
-        $ending = $opening + $received - $fundOut;
         $balanceNow = $openingBase + $paid($inTypes, null, null) - $paid('fund_cost', null, null);
 
         // ---- Charges (issued vs collected) ----------------------------------
@@ -105,6 +104,10 @@ class Index extends Component
         $expScope = fn () => Expense::query()->when($bid, fn ($q) => $q->where('building_id', $bid))
             ->whereDate('expense_date', '>=', $gFrom)->whereDate('expense_date', '<=', $gTo);
         $expensesTotal = (int) $expScope()->sum('amount');
+
+        // Period statement (for the board): opening + income − TOTAL expenses of the
+        // period. May be a deficit (بدهکار) when spending exceeds resources.
+        $ending = $opening + $received - $expensesTotal;
 
         $byDist = $expScope()->selectRaw('distribution, sum(amount) as s')->groupBy('distribution')->pluck('s', 'distribution');
         $d = fn (string $k) => (int) ($byDist[$k] ?? 0);
