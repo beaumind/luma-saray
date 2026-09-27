@@ -51,6 +51,7 @@ class DashboardBalanceTest extends TestCase
             ->assertViewHas('fundOut', 2_000_000)       // cash out (for the note)
             ->assertViewHas('expensesTotal', 4_000_000) // total recorded expense
             ->assertViewHas('ending', 14_000_000)       // 15 + 3 − 4 (period statement)
-            ->assertViewHas('balance', 16_000_000);     // all-time cash unchanged
+            ->assertViewHas('periodCash', 16_000_000)   // 15 + 3 − 2 (cash actually moved)
+            ->assertViewHas('balance', 16_000_000);     // all-time cash
     }
 }

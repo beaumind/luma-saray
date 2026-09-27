@@ -108,6 +108,8 @@ class Index extends Component
         // Period statement (for the board): opening + income − TOTAL expenses of the
         // period. May be a deficit (بدهکار) when spending exceeds resources.
         $ending = $opening + $received - $expensesTotal;
+        // Actual cash in the fund at the end of the period (only money that moved).
+        $periodCash = $opening + $received - $fundOut;
 
         $byDist = $expScope()->selectRaw('distribution, sum(amount) as s')->groupBy('distribution')->pluck('s', 'distribution');
         $d = fn (string $k) => (int) ($byDist[$k] ?? 0);
@@ -178,7 +180,7 @@ class Index extends Component
         return view('livewire.dashboard.index', [
             'buildings' => Building::where('is_active', true)->orderBy('name')->get(),
             'balance' => $balanceNow,
-            'opening' => $opening, 'received' => $received, 'fundOut' => $fundOut, 'ending' => $ending,
+            'opening' => $opening, 'received' => $received, 'fundOut' => $fundOut, 'ending' => $ending, 'periodCash' => $periodCash,
             'expensesTotal' => $expensesTotal,
             // payments in/out breakdown
             'inflowRows' => [
