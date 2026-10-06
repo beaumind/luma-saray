@@ -80,7 +80,8 @@ class Index extends Component
             ->whereIn('type', (array) $types)->whereDate('payment_date', '<', $gFrom)->sum('amount');
 
         $inTypes = ['charge', 'unit_cost', 'deposit'];
-        $opening = $openingBase + $before($inTypes) - $before('fund_cost');
+        $outTypes = ['fund_cost', 'credit_refund'];
+        $opening = $openingBase + $before($inTypes) - $before($outTypes);
 
         // ---- Payments by type in the period ---------------------------------
         $payByType = Payment::query()
@@ -90,8 +91,8 @@ class Index extends Component
         $pt = fn (string $t) => (int) ($payByType[$t] ?? 0);
 
         $received = $pt('charge') + $pt('unit_cost') + $pt('deposit');
-        $fundOut = $pt('fund_cost');
-        $balanceNow = $openingBase + $paid($inTypes, null, null) - $paid('fund_cost', null, null);
+        $fundOut = $pt('fund_cost') + $pt('credit_refund');
+        $balanceNow = $openingBase + $paid($inTypes, null, null) - $paid($outTypes, null, null);
 
         // ---- Charges (issued vs collected) ----------------------------------
         $chargesIssued = (int) LedgerTransaction::query()

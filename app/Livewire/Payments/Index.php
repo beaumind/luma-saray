@@ -97,6 +97,15 @@ class Index extends Component
     {
         if ($this->type === 'unit_cost') {
             $this->prefillAmount();
+        } elseif ($this->type === 'credit_refund') {
+            $this->prefillRefund();
+        }
+    }
+
+    public function updatedType(): void
+    {
+        if ($this->type === 'credit_refund') {
+            $this->prefillRefund();
         }
     }
 
@@ -116,10 +125,21 @@ class Index extends Component
         }
     }
 
+    /** Prefill a credit refund with the unit's outstanding creditor balance. */
+    private function prefillRefund(): void
+    {
+        if ($this->type === 'credit_refund' && $this->unit_id) {
+            $credit = (int) Unit::find((int) $this->unit_id)?->creditBalance;
+            if ($credit > 0) {
+                $this->amount = (string) Fmt::display($credit);
+            }
+        }
+    }
+
     public function save(PaymentService $service): void
     {
         $rules = [
-            'type' => 'required|in:charge,fund_cost,unit_cost,unit_credit',
+            'type' => 'required|in:charge,fund_cost,unit_cost,unit_credit,credit_refund',
             'amount' => 'required|integer|min:1',
             'payment_date' => ['required', new JalaliDate],
             'tracking_number' => 'nullable|string|max:100',
@@ -127,7 +147,7 @@ class Index extends Component
             'unit_id' => 'nullable|exists:units,id',
             'expense_id' => 'nullable|exists:expenses,id',
         ];
-        if (in_array($this->type, ['charge', 'unit_cost', 'unit_credit'])) {
+        if (in_array($this->type, ['charge', 'unit_cost', 'unit_credit', 'credit_refund'])) {
             $rules['unit_id'] = 'required|exists:units,id';
         }
         if (in_array($this->type, ['fund_cost', 'unit_cost', 'unit_credit'])) {
@@ -150,6 +170,7 @@ class Index extends Component
             'fund_cost' => $service->registerFundCost($expense, $data),
             'unit_cost' => $service->registerUnitCost($unit, $expense, $data),
             'unit_credit' => $service->registerUnitCredit($unit, $expense, $data),
+            'credit_refund' => $service->registerCreditRefund($unit, $expense, $data),
             default => $service->register($unit, $data),
         };
 

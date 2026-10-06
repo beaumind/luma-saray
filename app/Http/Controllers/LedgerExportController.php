@@ -66,7 +66,8 @@ class LedgerExportController extends Controller
         $rows = $this->paymentQuery($request)->with(['unit.building', 'expense'])->get();
 
         $headers = ['نوع', 'واحد', 'ساختمان', 'هزینهٔ مرتبط', 'مبلغ ('.Fmt::currency().')', 'تاریخ', 'شماره پیگیری', 'توضیحات'];
-        $types = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'];
+        $types = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد', 'credit_refund' => 'بازپرداخت به واحد'];
+        $out = ['fund_cost', 'credit_refund'];
 
         $data = $rows->map(fn (Payment $p) => [
             'نوع' => $types[$p->type] ?? $p->type,
@@ -74,7 +75,7 @@ class LedgerExportController extends Controller
             'ساختمان' => $p->unit?->building?->name ?? '—',
             'هزینهٔ مرتبط' => $p->expense?->title ?? '—',
             // Green in (to fund) / red out (from fund) via the leading +/−.
-            'مبلغ' => ($p->type === 'fund_cost' ? '−' : '+').number_format(Fmt::display((int) $p->amount)),
+            'مبلغ' => (in_array($p->type, $out) ? '−' : '+').number_format(Fmt::display((int) $p->amount)),
             'تاریخ' => JDate::toJalali($p->payment_date),
             'شماره پیگیری' => $p->tracking_number ?? '—',
             'توضیحات' => $p->notes ?? '',
@@ -82,10 +83,11 @@ class LedgerExportController extends Controller
 
         $by = fn ($t) => (int) $rows->where('type', $t)->sum('amount');
         $toFund = $by('charge') + $by('unit_cost') + $by('deposit');
-        $net = $toFund - $by('fund_cost');
+        $fromFund = $by('fund_cost') + $by('credit_refund');
+        $net = $toFund - $fromFund;
         $summary = [
             ['label' => 'مجموع دریافتی به صندوق', 'value' => '+'.number_format(Fmt::display($toFund)), 'rgb' => '16A34A'],
-            ['label' => 'مجموع پرداختی از صندوق', 'value' => '−'.number_format(Fmt::display($by('fund_cost'))), 'rgb' => 'DC2626'],
+            ['label' => 'مجموع پرداختی از صندوق', 'value' => '−'.number_format(Fmt::display($fromFund)), 'rgb' => 'DC2626'],
             ['label' => 'خالص جریان صندوق', 'value' => ($net >= 0 ? '+' : '−').number_format(Fmt::display(abs($net))), 'rgb' => $net >= 0 ? '16A34A' : 'DC2626'],
             ['label' => 'بستانکاری واحد', 'value' => number_format(Fmt::display($by('unit_credit'))), 'rgb' => '5B5BD6'],
         ];

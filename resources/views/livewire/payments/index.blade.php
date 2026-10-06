@@ -47,11 +47,12 @@
                     @php
                         $meta = match($p->type) {
                             'fund_cost' => ['↑', '#fdeded', '#dc2626', 'پرداخت از صندوق', $p->expense?->title],
+                            'credit_refund' => ['↑', '#fdeded', '#dc2626', 'بازپرداخت به واحد '.Fmt::fa($p->unit?->number), $p->expense?->title],
                             'unit_credit' => ['★', '#eef0fb', '#5b5bd6', 'بستانکاری واحد '.Fmt::fa($p->unit?->number), $p->expense?->title],
                             'unit_cost' => ['↓', '#e9f7ef', '#16a34a', 'هزینهٔ واحد '.Fmt::fa($p->unit?->number), $p->expense?->title],
                             default => ['↓', '#e9f7ef', '#16a34a', 'شارژ واحد '.Fmt::fa($p->unit?->number), null],
                         };
-                        $outflow = $p->type === 'fund_cost';
+                        $outflow = in_array($p->type, ['fund_cost', 'credit_refund']);
                     @endphp
                     <button wire:click="openDetail({{ $p->id }})" type="button" class="flex w-full items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px] text-right">
                         <div class="flex h-10 w-10 flex-none items-center justify-center rounded-[11px] text-[17px]" style="background:{{ $meta[1] }};color:{{ $meta[2] }}">{{ $meta[0] }}</div>
@@ -80,6 +81,7 @@
                             'fund_cost' => ['پرداخت هزینه از صندوق', 'صندوق یک هزینهٔ ثبت‌شده را پرداخت می‌کند'],
                             'unit_cost' => ['پرداخت هزینه توسط واحد', 'واحد سهم خودش از یک هزینه را می‌پردازد'],
                             'unit_credit' => ['پرداخت هزینه به‌جای صندوق (بستانکاری)', 'واحد هزینه‌ای که با صندوق است را می‌پردازد و بستانکار می‌شود'],
+                            'credit_refund' => ['بازپرداخت به واحد (از محل بستانکاری)', 'صندوق بستانکاری واحد را نقداً پرداخت می‌کند؛ از موجودی صندوق و از بستانکاری واحد کم می‌شود'],
                         ];
                     @endphp
                     @foreach($types as $key => [$t, $d])
@@ -111,7 +113,7 @@
             {{-- Cost (all except charge) --}}
             @if($type !== 'charge')
                 <label class="flex flex-col gap-1.5">
-                    <span class="text-[12.5px] font-semibold text-[#3f3f46]">هزینهٔ مرتبط</span>
+                    <span class="text-[12.5px] font-semibold text-[#3f3f46]">هزینهٔ مرتبط @if($type === 'credit_refund')<span class="font-normal text-[#a1a1aa]">(اختیاری)</span>@endif</span>
                     <select wire:model.live="expense_id" class="h-[46px] rounded-[11px] border border-[#e4e4e7] bg-[#fafafa] px-[13px] text-[14px] outline-none focus:border-[#5b5bd6]">
                         <option value="">انتخاب هزینه…</option>
                         @foreach($expenses as $ex)<option value="{{ $ex->id }}">{{ $ex->title }} — {{ Fmt::money($ex->amount) }}</option>@endforeach
@@ -146,7 +148,7 @@
     <x-sheet model="showDetail" title="جزئیات پرداخت">
         @if($detailPayment)
             @php
-                $typeLabel = ['charge' => 'پرداخت شارژ', 'fund_cost' => 'پرداخت هزینه از صندوق', 'unit_cost' => 'پرداخت هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'][$detailPayment->type] ?? $detailPayment->type;
+                $typeLabel = ['charge' => 'پرداخت شارژ', 'fund_cost' => 'پرداخت هزینه از صندوق', 'unit_cost' => 'پرداخت هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد', 'credit_refund' => 'بازپرداخت به واحد'][$detailPayment->type] ?? $detailPayment->type;
             @endphp
             <div class="flex flex-col gap-3">
                 <div class="rounded-[14px] bg-[#f7f7f8] p-3.5 text-center">
@@ -184,11 +186,11 @@
 
     {{-- Off-screen snapshot used by the image export --}}
     @php
-        $ptypeLabels = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'];
+        $ptypeLabels = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد', 'credit_refund' => 'بازپرداخت به واحد'];
         $by = fn ($t) => (int) $printRows->where('type', $t)->sum('amount');
         $cnt = fn ($t) => $printRows->where('type', $t)->count();
         $pToFund = $by('charge') + $by('unit_cost') + $by('deposit');
-        $pFromFund = $by('fund_cost');
+        $pFromFund = $by('fund_cost') + $by('credit_refund');
         $pNet = $pToFund - $pFromFund;
         $pSummary = [
             ['شارژ دریافتی', $by('charge'), $cnt('charge'), '#16a34a', '+'],
@@ -196,6 +198,7 @@
             ['واریز/سایر', $by('deposit'), $cnt('deposit'), '#16a34a', '+'],
             ['بستانکاری واحد', $by('unit_credit'), $cnt('unit_credit'), '#5b5bd6', ''],
             ['پرداخت از صندوق', $by('fund_cost'), $cnt('fund_cost'), '#dc2626', '−'],
+            ['بازپرداخت به واحد', $by('credit_refund'), $cnt('credit_refund'), '#dc2626', '−'],
         ];
     @endphp
     <div id="payments-print" aria-hidden="true" dir="rtl"
@@ -246,7 +249,7 @@
             </thead>
             <tbody>
                 @foreach($printRows as $p)
-                    @php $out = $p->type === 'fund_cost'; @endphp
+                    @php $out = in_array($p->type, ['fund_cost', 'credit_refund']); @endphp
                     <tr>
                         <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $ptypeLabels[$p->type] ?? $p->type }}</td>
                         <td style="border:1px solid #e4e4e7;padding:6px;text-align:center">{{ $p->unit ? Fmt::fa($p->unit->number) : '—' }}</td>

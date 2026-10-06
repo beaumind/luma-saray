@@ -343,7 +343,7 @@ class ImportKamaliBuilding extends Command
         $opening = (int) $building->opening_balance;
         $charge = (int) Payment::where('building_id', $bid)->where('type', 'charge')->sum('amount');
         $unitCost = (int) Payment::where('building_id', $bid)->where('type', 'unit_cost')->sum('amount');
-        $fundOut = (int) Payment::where('building_id', $bid)->where('type', 'fund_cost')->sum('amount');
+        $fundOut = (int) Payment::where('building_id', $bid)->whereIn('type', ['fund_cost', 'credit_refund'])->sum('amount');
         $fund = $opening + $charge + $unitCost - $fundOut;
         $this->info('صندوق (ریال): موجودی اولیه '.number_format($opening).' + شارژ '.number_format($charge).' + قسط ویژه '.number_format($unitCost).' − هزینه '.number_format($fundOut).' = '.number_format($fund));
         $this->info('معادل تومان: '.number_format(intdiv($fund, 10)));

@@ -69,6 +69,27 @@ class PaymentService
      * becoming a creditor. Records a standing credit that does NOT reduce the
      * unit's debt until it is explicitly applied.
      */
+    /**
+     * The fund pays a creditor unit back in cash (e.g. it fronted a building
+     * cost). Money leaves the fund (outflow) and the unit's creditor balance is
+     * reduced — the unit's own charge debt is NOT touched.
+     */
+    public function registerCreditRefund(Unit $unit, ?Expense $expense, array $data): Payment
+    {
+        return DB::transaction(function () use ($unit, $expense, $data) {
+            $payment = $this->createPayment($unit, 'credit_refund', $expense, $data);
+
+            $this->ledger->recordCreditUsed(
+                $unit,
+                (int) $payment->amount,
+                $data['notes'] ?? 'بازپرداخت بستانکاری به واحد',
+                $payment->payment_date->format('Y-m-d')
+            );
+
+            return $payment;
+        });
+    }
+
     public function registerUnitCredit(Unit $unit, Expense $expense, array $data): Payment
     {
         return DB::transaction(function () use ($unit, $expense, $data) {

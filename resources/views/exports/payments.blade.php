@@ -1,11 +1,11 @@
 @php
     use App\Support\Fmt;
     use App\Support\JDate;
-    $ptype = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد'];
+    $ptype = ['charge' => 'شارژ', 'fund_cost' => 'پرداخت از صندوق', 'unit_cost' => 'هزینهٔ واحد', 'unit_credit' => 'بستانکاری واحد', 'credit_refund' => 'بازپرداخت به واحد'];
     $by = fn ($t) => (int) $rows->where('type', $t)->sum('amount');
     $cnt = fn ($t) => $rows->where('type', $t)->count();
     $toFund = $by('charge') + $by('unit_cost') + $by('deposit');
-    $fromFund = $by('fund_cost');
+    $fromFund = $by('fund_cost') + $by('credit_refund');
     $credit = $by('unit_credit');
     $net = $toFund - $fromFund;
     $m = fn ($v) => Fmt::fa(number_format(Fmt::display((int) $v)));
@@ -16,6 +16,7 @@
         ['واریز/سایر', $by('deposit'), $cnt('deposit'), '#16a34a', '+'],
         ['بستانکاری واحد', $by('unit_credit'), $cnt('unit_credit'), '#5b5bd6', ''],
         ['پرداخت از صندوق', $by('fund_cost'), $cnt('fund_cost'), '#dc2626', '−'],
+        ['بازپرداخت به واحد', $by('credit_refund'), $cnt('credit_refund'), '#dc2626', '−'],
     ];
 @endphp
 <!DOCTYPE html>
@@ -82,7 +83,7 @@
         </thead>
         <tbody>
             @forelse($rows as $p)
-                @php $out = $p->type === 'fund_cost'; @endphp
+                @php $out = in_array($p->type, ['fund_cost', 'credit_refund']); @endphp
                 <tr>
                     <td>{{ $ptype[$p->type] ?? $p->type }}</td>
                     <td>{{ $p->unit ? Fmt::fa($p->unit->number) : '—' }}</td>
