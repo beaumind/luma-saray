@@ -97,30 +97,47 @@ window.resumableUpload = (opts) => ({
     folder: opts.folder,
     accept: opts.accept || 'image/*,application/pdf',
     target: opts.target,
+    multiple: !!opts.multiple,
     // state
     uploading: false,
     progress: 0,
     error: '',
     fileName: '',
+    // single-file mode
     path: '',
     previewUrl: '',
+    // multiple-file mode
+    items: [],
     dragOver: false,
     r: null,
+
+    urlFor(p) {
+        return p && opts.baseUrl ? opts.baseUrl.replace('__PATH__', p) : '';
+    },
 
     applyPath(v) {
         this.path = v || '';
         this.fileName = this.path ? this.path.split('/').pop() : '';
-        this.previewUrl = this.path && opts.baseUrl ? opts.baseUrl.replace('__PATH__', this.path) : '';
+        this.previewUrl = this.urlFor(this.path);
+    },
+
+    applyItems(v) {
+        const arr = Array.isArray(v) ? v : (v ? [v] : []);
+        this.items = arr.map((p) => ({ path: p, url: this.urlFor(p), name: String(p).split('/').pop() }));
+    },
+
+    sync(v) {
+        this.multiple ? this.applyItems(v) : this.applyPath(v);
     },
 
     init() {
-        // Existing value (edit mode): show that a file is already attached.
-        this.applyPath(this.$wire.get(this.model));
+        // Existing value (edit mode): show that files are already attached.
+        this.sync(this.$wire.get(this.model));
 
         // The property can change server-side (e.g. opening an edit form) while
         // this component is wire:ignore'd — keep the preview in sync, unless we
         // are the ones mid-upload.
-        this.$wire.$watch(this.model, (v) => { if (!this.uploading) this.applyPath(v); });
+        this.$wire.$watch(this.model, (v) => { if (!this.uploading) this.sync(v); });
 
         const token = document.querySelector('meta[name="csrf-token"]')?.content;
         const self = this;
@@ -129,7 +146,7 @@ window.resumableUpload = (opts) => ({
             testChunks: true,                 // ask the server which chunks exist → resume
             chunkSize: 1 * 1024 * 1024,       // 1 MB
             simultaneousUploads: 3,
-            maxFiles: 1,
+            maxFiles: this.multiple ? undefined : 1,
             fileType: ['jpg', 'jpeg', 'png', 'pdf'],
             query: { folder: this.folder },
             headers: { 'X-CSRF-TOKEN': token, Accept: 'application/json' },
@@ -149,18 +166,26 @@ window.resumableUpload = (opts) => ({
         });
         this.r.on('fileProgress', (file) => { this.progress = Math.round(file.progress() * 100); });
         this.r.on('fileSuccess', (file, message) => {
-            this.uploading = false;
             this.progress = 100;
             let res = {};
             try { res = JSON.parse(message); } catch (e) { /* noop */ }
             if (res.path) {
-                this.path = res.path;
-                this.previewUrl = res.url || '';
-                this.$wire.set(this.model, res.path);
+                if (this.multiple) {
+                    this.items.push({ path: res.path, url: res.url || this.urlFor(res.path), name: res.path.split('/').pop() });
+                    this.$wire.set(this.model, this.items.map((i) => i.path));
+                } else {
+                    this.path = res.path;
+                    this.previewUrl = res.url || '';
+                    this.$wire.set(this.model, res.path);
+                }
             }
+            // Drop it from resumable's queue so more files can be added and the
+            // same file can be re-picked later.
+            if (this.r) this.r.removeFile(file);
+            this.uploading = this.r ? this.r.isUploading() : false;
         });
         this.r.on('fileError', (file, message) => {
-            this.uploading = false;
+            this.uploading = this.r ? this.r.isUploading() : false;
             let res = {};
             try { res = JSON.parse(message); } catch (e) { /* noop */ }
             this.error = res.message || 'بارگذاری ناموفق بود. دوباره تلاش کنید.';
@@ -185,10 +210,19 @@ window.resumableUpload = (opts) => ({
         this.progress = 0;
         this.error = '';
         if (this.r) this.r.cancel();
-        this.$wire.set(this.model, null);
+        this.$wire.set(this.model, this.multiple ? [] : null);
+    },
+
+    removeAt(i) {
+        this.items.splice(i, 1);
+        this.$wire.set(this.model, this.items.map((it) => it.path));
+    },
+
+    isImageName(name) {
+        return /\.(jpe?g|png)$/i.test(name || '');
     },
 
     isImage() {
-        return /\.(jpe?g|png)$/i.test(this.fileName || this.path || '');
+        return this.isImageName(this.fileName || this.path);
     },
 });

@@ -54,7 +54,8 @@ class Index extends Component
 
     public string $responsible = 'owner';
 
-    public ?string $image_path = null;
+    /** @var string[] stored attachment paths (images / PDF) */
+    public array $attachment_paths = [];
 
     public function mount(): void
     {
@@ -118,7 +119,7 @@ class Index extends Component
         $this->distribution = in_array($e->distribution, ['fund', 'all_units', 'single_unit']) ? $e->distribution : 'fund';
         $this->single_unit_id = (string) ($e->expenseUnits->first()->unit_id ?? '');
         $this->responsible = $e->responsible ?? 'owner';
-        $this->image_path = $e->attachments[0] ?? null;
+        $this->attachment_paths = $e->attachments ?? [];
         $this->showModal = true;
     }
 
@@ -132,12 +133,13 @@ class Index extends Component
             'distribution' => 'required|in:fund,all_units,single_unit',
             'single_unit_id' => 'required_if:distribution,single_unit|nullable|exists:units,id',
             'responsible' => 'required|in:owner,tenant,both',
-            'image_path' => 'nullable|string|max:255',
+            'attachment_paths' => 'array',
+            'attachment_paths.*' => 'string|max:255',
         ]);
 
         $building = Building::find($this->building_id);
 
-        $attachments = $this->image_path ? [$this->image_path] : null;
+        $attachments = $this->attachment_paths ?: null;
 
         $data = [
             'expense_category_id' => $this->expense_category_id ?: null,
@@ -174,7 +176,7 @@ class Index extends Component
         $this->distribution = 'fund';
         $this->single_unit_id = '';
         $this->responsible = 'owner';
-        $this->image_path = null;
+        $this->attachment_paths = [];
         $this->resetValidation();
     }
 

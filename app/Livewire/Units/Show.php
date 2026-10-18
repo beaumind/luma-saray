@@ -34,7 +34,8 @@ class Show extends Component
 
     public string $pay_notes = '';
 
-    public ?string $receipt_path = null;
+    /** @var string[] stored receipt paths (images / PDF) */
+    public array $receipt_paths = [];
 
     // Vacancy modal
     public bool $showVacancyModal = false;
@@ -108,7 +109,7 @@ class Show extends Component
         $this->pay_date = JDate::today();
         $this->pay_tracking = '';
         $this->pay_notes = '';
-        $this->receipt_path = null;
+        $this->receipt_paths = [];
         $this->showPaymentModal = true;
     }
 
@@ -118,7 +119,8 @@ class Show extends Component
             'pay_amount' => 'required|integer|min:1',
             'pay_date' => ['required', new JalaliDate],
             'pay_tracking' => 'nullable|string|max:100',
-            'receipt_path' => 'nullable|string|max:255',
+            'receipt_paths' => 'array',
+            'receipt_paths.*' => 'string|max:255',
         ]);
 
         $service->register($this->unit, [
@@ -126,7 +128,7 @@ class Show extends Component
             'payment_date' => JDate::toGregorian($this->pay_date),
             'tracking_number' => $this->pay_tracking ?: null,
             'notes' => $this->pay_notes ?: null,
-            'receipt_path' => $this->receipt_path ?: null,
+            'attachments' => $this->receipt_paths ?: null,
         ]);
 
         $this->showPaymentModal = false;

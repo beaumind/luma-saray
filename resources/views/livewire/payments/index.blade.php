@@ -138,7 +138,7 @@
                 </label>
             @endif
 
-            <x-resumable-upload model="receipt_path" folder="receipts" label="تصویر رسید (اختیاری)" />
+            <x-resumable-upload model="receipt_paths" :multiple="true" folder="receipts" label="رسیدها / ضمیمه‌ها (چند فایل مجاز است)" />
 
             <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</x-submit-button>
         </form>
@@ -170,14 +170,19 @@
                         <span class="font-semibold text-[#18181b]">{{ $v }}</span>
                     </div>
                 @endforeach
-                @if($detailPayment->receipt_path)
+                @php $receipts = $detailPayment->attachments ?: ($detailPayment->receipt_path ? [$detailPayment->receipt_path] : []); @endphp
+                @if($receipts)
                     <div>
-                        <div class="mb-1.5 text-[12.5px] font-semibold text-[#3f3f46]">رسید پرداخت</div>
-                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($detailPayment->receipt_path) }}" target="_blank">
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($detailPayment->receipt_path) }}" alt="رسید"
-                                 class="max-h-[280px] w-full rounded-[12px] border border-[#ececef] object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-                            <span style="display:none" class="block rounded-[10px] bg-[#fdeded] px-3 py-2 text-center text-[12px] text-[#dc2626]">فایل رسید یافت نشد (احتمالاً پیش از فعال‌سازی ذخیره‌سازی آپلود شده)</span>
-                        </a>
+                        <div class="mb-1.5 text-[12.5px] font-semibold text-[#3f3f46]">رسید پرداخت{{ count($receipts) > 1 ? ' ('.Fmt::fa(count($receipts)).' فایل)' : '' }}</div>
+                        <div class="flex flex-col gap-2">
+                            @foreach($receipts as $rc)
+                                <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($rc) }}" target="_blank">
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($rc) }}" alt="رسید"
+                                         class="max-h-[280px] w-full rounded-[12px] border border-[#ececef] object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                                    <span style="display:none" class="block rounded-[10px] bg-[#eef0fb] px-3 py-2 text-center text-[12px] text-[#5b5bd6]">باز کردن فایل رسید</span>
+                                </a>
+                            @endforeach
+                        </div>
                     </div>
                 @endif
             </div>

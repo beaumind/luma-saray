@@ -49,7 +49,8 @@ class Index extends Component
 
     public string $notes = '';
 
-    public ?string $receipt_path = null;
+    /** @var string[] stored receipt paths (images / PDF) */
+    public array $receipt_paths = [];
 
     /** For unit_credit: offset the unit's debt with the credit immediately. */
     public bool $apply_credit_now = true;
@@ -143,7 +144,8 @@ class Index extends Component
             'amount' => 'required|integer|min:1',
             'payment_date' => ['required', new JalaliDate],
             'tracking_number' => 'nullable|string|max:100',
-            'receipt_path' => 'nullable|string|max:255',
+            'receipt_paths' => 'array',
+            'receipt_paths.*' => 'string|max:255',
             'unit_id' => 'nullable|exists:units,id',
             'expense_id' => 'nullable|exists:expenses,id',
         ];
@@ -160,7 +162,7 @@ class Index extends Component
             'payment_date' => JDate::toGregorian($this->payment_date),
             'tracking_number' => $this->tracking_number ?: null,
             'notes' => $this->notes ?: null,
-            'receipt_path' => $this->receipt_path ?: null,
+            'attachments' => $this->receipt_paths ?: null,
         ];
 
         $unit = $this->unit_id ? Unit::findOrFail((int) $this->unit_id) : null;
@@ -196,7 +198,7 @@ class Index extends Component
         $this->payment_date = '';
         $this->tracking_number = '';
         $this->notes = '';
-        $this->receipt_path = null;
+        $this->receipt_paths = [];
         $this->apply_credit_now = true;
         $this->resetValidation();
     }

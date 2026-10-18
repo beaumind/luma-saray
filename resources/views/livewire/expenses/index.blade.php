@@ -129,7 +129,7 @@
 
             <x-input wire:model="description" label="توضیحات (اختیاری)" />
 
-            <x-resumable-upload model="image_path" folder="expenses" label="تصویر فاکتور (اختیاری)" />
+            <x-resumable-upload model="attachment_paths" :multiple="true" folder="expenses" label="فاکتور / ضمیمه‌ها (چند فایل مجاز است)" />
 
             <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت هزینه</x-submit-button>
             <p class="text-center text-[11px] text-[#a1a1aa]">پرداخت این هزینه را از بخش «پرداخت‌ها» ثبت کنید.</p>

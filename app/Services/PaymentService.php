@@ -138,6 +138,7 @@ class PaymentService
             'payment_date' => $data['payment_date'],
             'tracking_number' => $data['tracking_number'] ?? null,
             'receipt_path' => $data['receipt_path'] ?? null,
+            'attachments' => $data['attachments'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
     }

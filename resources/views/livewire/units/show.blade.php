@@ -121,7 +121,7 @@
                 <div class="flex-1"><x-input wire:model="pay_tracking" label="شماره پیگیری" /></div>
             </div>
             <x-input wire:model="pay_notes" label="توضیحات" />
-            <x-resumable-upload model="receipt_path" folder="receipts" label="تصویر رسید (اختیاری)" />
+            <x-resumable-upload model="receipt_paths" :multiple="true" folder="receipts" label="رسیدها / ضمیمه‌ها (چند فایل مجاز است)" />
             <x-submit-button target="savePayment" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ثبت پرداخت</x-submit-button>
         </form>
     </x-sheet>

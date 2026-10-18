@@ -22,12 +22,14 @@ class Payment extends Model
         'payment_date',
         'tracking_number',
         'receipt_path',
+        'attachments',
         'notes',
     ];
 
     protected $casts = [
         'amount' => 'integer',
         'payment_date' => 'date',
+        'attachments' => 'array',
     ];
 
     public function unit(): BelongsTo
