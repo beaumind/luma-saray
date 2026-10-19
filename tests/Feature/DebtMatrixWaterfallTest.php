@@ -70,4 +70,35 @@ class DebtMatrixWaterfallTest extends TestCase
         $this->assertSame('unpaid', $row['months'][$mordadIdx]['state']);
         $this->assertSame(6_000_000, $row['total_debt']);
     }
+
+    public function test_over_refunded_creditor_does_not_show_a_phantom_credit(): void
+    {
+        $admin = app(CreateOrganization::class)->handle('Org', 'Admin', '09120000003', 'secret123');
+        $this->actingAs($admin);
+        $building = Building::create(['name' => 'B', 'address' => 'x', 'city' => 'y']);
+        $unit = Unit::create(['building_id' => $building->id, 'number' => '8']);
+
+        $ledger = app(LedgerService::class);
+
+        // The unit overpays its تیر charge by 130,000 → a 130,000 over-payment.
+        $ledger->recordCharge($unit, 1_000_000, 'شارژ تیر', '2026-06-22');
+        app(PaymentService::class)->register($unit, ['amount' => 1_130_000, 'payment_date' => '2026-06-21']);
+
+        // It fronted 1,000,000 for the fund, then was refunded 1,130,000 — i.e.
+        // 130,000 MORE than its fronted credit (the old report inflated it by the
+        // over-payment). Standing creditor balance is now −130,000.
+        $ledger->recordCredit($unit, 1_000_000, 'فرانت هزینه', '2026-06-20');
+        $ledger->recordCreditUsed($unit, 1_130_000, 'بازپرداخت بیش از حد', '2026-06-23');
+
+        $this->travelTo(Carbon::parse('2026-08-02'));
+        $matrix = DebtMatrix::build($building->id, 'seasonal', 1);
+        $this->travelBack();
+
+        $row = collect($matrix['rows'])->firstWhere('number', '8');
+
+        // The negative standing (−130,000) must cancel the 130,000 over-payment,
+        // not leave it standing on its own as a phantom creditor balance.
+        $this->assertSame(0, $row['credit_balance']);
+        $this->assertSame(0, $row['total_debt']);
+    }
 }

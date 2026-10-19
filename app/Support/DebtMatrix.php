@@ -249,7 +249,11 @@ class DebtMatrix
                 'months' => $cells,
                 'special_costs' => ['value' => $scCharged, 'state' => $scState],
                 'total_debt' => max($totalDebt, 0),
-                'credit_balance' => max($creditStanding, 0) + $overpaid,
+                // Net the standing creditor balance with any over-payment BEFORE
+                // clamping: a unit refunded slightly more than its fronted credit
+                // (negative standing) must offset its charge over-payment, instead
+                // of the over-payment showing on its own as a phantom creditor.
+                'credit_balance' => max(0, $creditStanding + $overpaid),
                 'notes' => implode("\n", $noteParts),
             ];
         }
