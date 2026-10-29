@@ -157,6 +157,24 @@ class DebtMatrix
             // so it counts toward the unit's creditor balance.
             $overpaid = max(0, $general);
 
+            // Round away sub-toman coverage gaps. A non-round rial share (e.g. the
+            // بیمه share of 2,830,982) can leave a few-rial remainder below one
+            // toman — rounding noise, not a real debt. Snapping it to fully covered
+            // stops it surfacing as a red «۰ تومان» total or a yellow (partial)
+            // special-cost cell. One toman = 10 rial.
+            foreach ($charges as &$ch) {
+                if ($ch['amount'] - $ch['covered'] < 10) {
+                    $ch['covered'] = $ch['amount'];
+                }
+            }
+            unset($ch);
+            foreach ($costs as &$c) {
+                if ($c['amount'] - $c['covered'] < 10) {
+                    $c['covered'] = $c['amount'];
+                }
+            }
+            unset($c);
+
             $pastDebt = 0;
             $totalDebt = 0;
             $pastChargeMonths = []; // Jalali month labels of unpaid pre-window charges

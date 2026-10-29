@@ -124,8 +124,11 @@ class DebtMatrixWaterfallTest extends TestCase
 
         $row = collect($matrix['rows'])->firstWhere('number', '2');
 
-        // A residual that displays as zero toman must not generate a debt note.
+        // A residual that displays as zero toman must not generate a debt note,
+        // nor a red sub-toman total, nor a yellow (partial) special-cost cell.
         $this->assertStringNotContainsString('۰ تومان', $row['notes']);
         $this->assertSame('', $row['notes']);
+        $this->assertSame(0, $row['total_debt']);
+        $this->assertSame('paid', $row['special_costs']['state']);
     }
 }
