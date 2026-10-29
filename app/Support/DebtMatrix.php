@@ -194,7 +194,7 @@ class DebtMatrix
                 $note = fn () => Fmt::money($uncovered).' '.Fmt::currency().' بدهی بابت '.($exp?->title ?? 'هزینهٔ ویژه').' ('.$who.')';
                 if ($d['date'] < $windowStart) {
                     $pastDebt += $uncovered;
-                    if ($uncovered > 0) {
+                    if (Fmt::display($uncovered) > 0) {
                         $pastCostNotes[] = $note();
                     }
 
@@ -203,7 +203,7 @@ class DebtMatrix
                 $special['charged'] += $d['amount'];
                 $special['paid'] += $d['covered'];
 
-                if ($uncovered > 0) {
+                if (Fmt::display($uncovered) > 0) {
                     $specialNotes[] = $note();
                 }
             }

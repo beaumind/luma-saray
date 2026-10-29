@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\CreateOrganization;
 use App\Models\Building;
+use App\Models\Expense;
 use App\Models\Unit;
 use App\Services\LedgerService;
 use App\Services\PaymentService;
@@ -100,5 +101,31 @@ class DebtMatrixWaterfallTest extends TestCase
         // not leave it standing on its own as a phantom creditor balance.
         $this->assertSame(0, $row['credit_balance']);
         $this->assertSame(0, $row['total_debt']);
+    }
+
+    public function test_sub_toman_cost_residual_adds_no_phantom_note(): void
+    {
+        $admin = app(CreateOrganization::class)->handle('Org', 'Admin', '09120000004', 'secret123');
+        $this->actingAs($admin);
+        $building = Building::create(['name' => 'B', 'address' => 'x', 'city' => 'y']);
+        $unit = Unit::create(['building_id' => $building->id, 'number' => '2']);
+
+        $expense = Expense::create([
+            'building_id' => $building->id, 'created_by' => $admin->id,
+            'title' => 'بیمه نامه ساختمان', 'amount' => 5, 'expense_date' => '2026-07-15',
+            'distribution' => 'all_units', 'responsible' => 'owner',
+        ]);
+        // A 5-rial cost share — below one toman, so it rounds to "۰ تومان" on screen.
+        app(LedgerService::class)->recordCost($unit, 5, 'سهم هزینه', '2026-07-15', $expense->id);
+
+        $this->travelTo(Carbon::parse('2026-08-02'));
+        $matrix = DebtMatrix::build($building->id, 'seasonal', 1);
+        $this->travelBack();
+
+        $row = collect($matrix['rows'])->firstWhere('number', '2');
+
+        // A residual that displays as zero toman must not generate a debt note.
+        $this->assertStringNotContainsString('۰ تومان', $row['notes']);
+        $this->assertSame('', $row['notes']);
     }
 }
