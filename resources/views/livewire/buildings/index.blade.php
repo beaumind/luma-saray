@@ -12,14 +12,20 @@
     <div class="px-4 pt-4">
         <div class="flex flex-col gap-[9px]">
             @forelse($buildings as $b)
-                <a href="{{ route('buildings.show', $b->id) }}" wire:navigate class="flex items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px]">
-                    <div class="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#eef0fb] text-[18px]">🏢</div>
-                    <div class="min-w-0 flex-1">
-                        <div class="truncate text-[14px] font-bold text-[#18181b]">{{ $b->name }}</div>
-                        <div class="truncate text-[11.5px] text-[#a1a1aa]">{{ $b->city }} · {{ $b->address }}</div>
-                    </div>
-                    <div class="text-left"><div class="text-[13px] font-bold text-[#5b5bd6]">{{ Fmt::fa($b->units_count) }} واحد</div><div class="text-[11px] text-[#a1a1aa]">{{ Fmt::fa($b->floors) }} طبقه</div></div>
-                </a>
+                <div class="flex items-stretch gap-2">
+                    <a href="{{ route('buildings.show', $b->id) }}" wire:navigate class="flex flex-1 items-center gap-3 rounded-[14px] border border-[#ececef] bg-white px-3.5 py-[13px]">
+                        <div class="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#eef0fb] text-[18px]">🏢</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-[14px] font-bold text-[#18181b]">{{ $b->name }}</div>
+                            <div class="truncate text-[11.5px] text-[#a1a1aa]">{{ $b->city }} · {{ $b->address }}</div>
+                        </div>
+                        <div class="text-left"><div class="text-[13px] font-bold text-[#5b5bd6]">{{ Fmt::fa($b->units_count) }} واحد</div><div class="text-[11px] text-[#a1a1aa]">{{ Fmt::fa($b->floors) }} طبقه</div></div>
+                    </a>
+                    <button type="button" wire:click="openEdit({{ $b->id }})" aria-label="ویرایش ساختمان"
+                        class="flex w-11 flex-none items-center justify-center rounded-[14px] border border-[#ececef] bg-white text-[#5b5bd6]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    </button>
+                </div>
             @empty
                 <div class="rounded-[14px] border border-[#ececef] bg-white px-4 py-10 text-center text-[13px] text-[#a1a1aa]">ساختمانی ثبت نشده است</div>
             @endforelse
