@@ -40,6 +40,23 @@
                 <div class="flex-1"><x-input wire:model="manager_name" label="نام مدیر" /></div>
                 <div class="flex-1"><x-input wire:model="manager_mobile" label="موبایل مدیر" type="tel" /></div>
             </div>
+
+            <div class="flex flex-col gap-2.5 rounded-[13px] border border-[#ececef] bg-[#fafafa] p-3">
+                <div class="text-[12.5px] font-semibold text-[#3f3f46]">رُندکردن سهم هزینه‌ها (اختیاری)</div>
+                <div class="flex flex-col gap-1.5">
+                    <span class="text-[12px] text-[#71717a]">نوع رُند</span>
+                    <select wire:model.live="cost_rounding_mode" class="h-[48px] rounded-[12px] border border-[#e4e4e7] bg-white px-3 text-[14px]">
+                        <option value="off">خاموش</option>
+                        <option value="up">رُند به بالا</option>
+                        <option value="down">رُند به پایین</option>
+                    </select>
+                </div>
+                @if($cost_rounding_mode !== 'off')
+                    <x-input wire:model="cost_rounding_step" label="پلهٔ رُند (تومان)" type="number" placeholder="مثلاً ۱۰۰۰۰" />
+                    <div class="text-[11px] leading-5 text-[#a1a1aa]">سهم هر واحد از هر هزینه به این پله {{ $cost_rounding_mode === 'up' ? 'به بالا' : 'به پایین' }} رُند می‌شود. فقط روی هزینه‌های جدید یا ویرایش‌شده اعمال می‌شود.</div>
+                @endif
+            </div>
+
             <x-submit-button target="save" class="mt-1 h-[50px] rounded-[13px] bg-[#5b5bd6] text-[15px] font-bold text-white">ذخیره ساختمان</x-submit-button>
         </form>
     </x-sheet>

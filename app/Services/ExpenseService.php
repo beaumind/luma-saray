@@ -75,11 +75,18 @@ class ExpenseService
             return;
         }
 
+        // When the building has cost rounding on, every unit pays the same share
+        // rounded up/down to the step. Otherwise the exact amount is split and the
+        // division remainder goes to the first unit so the total reconciles.
+        $rounding = $building->cost_rounding_step > 0
+            && in_array($building->cost_rounding_mode, ['up', 'down'], true);
+        $roundedShare = $rounding ? $building->roundShare((int) $expense->amount / $units->count()) : null;
+
         $perUnit = intdiv((int) $expense->amount, $units->count());
         $remainder = (int) $expense->amount - ($perUnit * $units->count());
 
         foreach ($units as $index => $unit) {
-            $unitAmount = $index === 0 ? $perUnit + $remainder : $perUnit;
+            $unitAmount = $roundedShare ?? ($index === 0 ? $perUnit + $remainder : $perUnit);
 
             ExpenseUnit::create([
                 'expense_id' => $expense->id,

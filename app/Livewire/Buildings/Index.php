@@ -3,6 +3,7 @@
 namespace App\Livewire\Buildings;
 
 use App\Models\Building;
+use App\Support\Fmt;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -34,6 +35,12 @@ class Index extends Component
 
     public string $description = '';
 
+    /** off | up | down */
+    public string $cost_rounding_mode = 'off';
+
+    /** Rounding step in the display currency (toman). */
+    public string $cost_rounding_step = '';
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -58,6 +65,10 @@ class Index extends Component
         $this->manager_name = $building->manager_name ?? '';
         $this->manager_mobile = $building->manager_mobile ?? '';
         $this->description = $building->description ?? '';
+        $this->cost_rounding_mode = in_array($building->cost_rounding_mode, ['off', 'up', 'down'], true)
+            ? $building->cost_rounding_mode : 'off';
+        $this->cost_rounding_step = $building->cost_rounding_step > 0
+            ? (string) Fmt::display((int) $building->cost_rounding_step) : '';
         $this->showModal = true;
     }
 
@@ -71,7 +82,11 @@ class Index extends Component
             'total_units' => 'required|integer|min:1|max:1000',
             'manager_name' => 'nullable|string|max:200',
             'manager_mobile' => 'nullable|string|max:20',
+            'cost_rounding_mode' => 'required|in:off,up,down',
+            'cost_rounding_step' => 'nullable|integer|min:0',
         ]);
+
+        $roundingOn = $this->cost_rounding_mode !== 'off';
 
         $data = [
             'name' => $this->name,
@@ -82,6 +97,9 @@ class Index extends Component
             'manager_name' => $this->manager_name ?: null,
             'manager_mobile' => $this->manager_mobile ?: null,
             'description' => $this->description ?: null,
+            'cost_rounding_mode' => $this->cost_rounding_mode,
+            'cost_rounding_step' => $roundingOn && $this->cost_rounding_step !== ''
+                ? Fmt::toRial($this->cost_rounding_step) : 0,
         ];
 
         if ($this->editingId) {
@@ -118,6 +136,8 @@ class Index extends Component
         $this->manager_name = '';
         $this->manager_mobile = '';
         $this->description = '';
+        $this->cost_rounding_mode = 'off';
+        $this->cost_rounding_step = '';
         $this->resetValidation();
     }
 
