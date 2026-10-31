@@ -65,7 +65,7 @@ class Index extends Component
         $this->manager_name = $building->manager_name ?? '';
         $this->manager_mobile = $building->manager_mobile ?? '';
         $this->description = $building->description ?? '';
-        $this->cost_rounding_mode = in_array($building->cost_rounding_mode, ['off', 'up', 'down'], true)
+        $this->cost_rounding_mode = in_array($building->cost_rounding_mode, ['off', 'nearest', 'up', 'down'], true)
             ? $building->cost_rounding_mode : 'off';
         $this->cost_rounding_step = $building->cost_rounding_step > 0
             ? (string) Fmt::display((int) $building->cost_rounding_step) : '';
@@ -82,7 +82,7 @@ class Index extends Component
             'total_units' => 'required|integer|min:1|max:1000',
             'manager_name' => 'nullable|string|max:200',
             'manager_mobile' => 'nullable|string|max:20',
-            'cost_rounding_mode' => 'required|in:off,up,down',
+            'cost_rounding_mode' => 'required|in:off,nearest,up,down',
             'cost_rounding_step' => 'nullable|integer|min:0',
         ]);
 

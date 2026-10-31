@@ -31,6 +31,16 @@ class CostRoundingTest extends TestCase
         $this->assertSame(22_360_000, $b->roundShare(22_360_000));
     }
 
+    public function test_round_share_nearest_goes_up_or_down_by_amount(): void
+    {
+        $b = new Building(['cost_rounding_mode' => 'nearest', 'cost_rounding_step' => 100000]);
+
+        // Past the midpoint of the step → rounds up.
+        $this->assertSame(22_400_000, $b->roundShare(22_360_000));
+        // Below the midpoint → rounds down.
+        $this->assertSame(22_300_000, $b->roundShare(22_320_000));
+    }
+
     public function test_distribute_rounds_each_unit_share_up(): void
     {
         $admin = app(CreateOrganization::class)->handle('Org', 'Admin', '09120000005', 'secret123');

@@ -79,7 +79,7 @@ class ExpenseService
         // rounded up/down to the step. Otherwise the exact amount is split and the
         // division remainder goes to the first unit so the total reconciles.
         $rounding = $building->cost_rounding_step > 0
-            && in_array($building->cost_rounding_mode, ['up', 'down'], true);
+            && in_array($building->cost_rounding_mode, Building::ROUNDING_MODES, true);
         $roundedShare = $rounding ? $building->roundShare((int) $expense->amount / $units->count()) : null;
 
         $perUnit = intdiv((int) $expense->amount, $units->count());

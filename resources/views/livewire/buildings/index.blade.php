@@ -53,13 +53,15 @@
                     <span class="text-[12px] text-[#71717a]">نوع رُند</span>
                     <select wire:model.live="cost_rounding_mode" class="h-[48px] rounded-[12px] border border-[#e4e4e7] bg-white px-3 text-[14px]">
                         <option value="off">خاموش</option>
-                        <option value="up">رُند به بالا</option>
-                        <option value="down">رُند به پایین</option>
+                        <option value="nearest">رُند به نزدیک‌ترین (بسته به مبلغ، بالا یا پایین)</option>
+                        <option value="up">همیشه رُند به بالا</option>
+                        <option value="down">همیشه رُند به پایین</option>
                     </select>
                 </div>
                 @if($cost_rounding_mode !== 'off')
+                    @php $dir = ['nearest' => 'به نزدیک‌ترین پله', 'up' => 'به بالا', 'down' => 'به پایین'][$cost_rounding_mode] ?? ''; @endphp
                     <x-input wire:model="cost_rounding_step" label="پلهٔ رُند (تومان)" type="number" placeholder="مثلاً ۱۰۰۰۰" />
-                    <div class="text-[11px] leading-5 text-[#a1a1aa]">سهم هر واحد از هر هزینه به این پله {{ $cost_rounding_mode === 'up' ? 'به بالا' : 'به پایین' }} رُند می‌شود. فقط روی هزینه‌های جدید یا ویرایش‌شده اعمال می‌شود.</div>
+                    <div class="text-[11px] leading-5 text-[#a1a1aa]">سهم هر واحد از هر هزینه {{ $dir }} رُند می‌شود. فقط روی هزینه‌های جدید یا ویرایش‌شده اعمال می‌شود.</div>
                 @endif
             </div>
 
