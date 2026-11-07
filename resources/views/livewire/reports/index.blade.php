@@ -67,7 +67,15 @@
 
         {{-- Debt matrix --}}
         <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
-            <div class="border-b border-[#f4f4f5] px-4 py-3 text-[13.5px] font-bold text-[#18181b]">جدول بدهی واحدها</div>
+            <div class="border-b border-[#f4f4f5] px-4 py-3">
+                <div class="text-[13.5px] font-bold text-[#18181b]">جدول بدهی واحدها</div>
+                <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10.5px] text-[#71717a]">
+                    <span>اعداد = مبلغِ باقی‌ماندهٔ بدهی (پرداخت‌نشده)</span>
+                    <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-[3px]" style="background:#dcfce7"></span>تسویه (✓)</span>
+                    <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-[3px]" style="background:#fef9c3"></span>ناقص</span>
+                    <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-[3px]" style="background:#fee2e2"></span>پرداخت‌نشده</span>
+                </div>
+            </div>
             <div class="overflow-x-auto">
                 <table id="debt-matrix" class="w-full border-collapse text-[11px]" style="min-width:max-content">
                     <thead>
@@ -91,12 +99,12 @@
                                         elseif ($key === 'monthly_charge') { $val = Fmt::money($row['monthly_charge']); }
                                         elseif ($key === 'past_debt') { $val = Fmt::money($row['past_debt']); $bg = $row['past_debt']>0 ? '#ffedd5' : '#dcfce7'; }
                                         elseif ($key === 'total_debt') { $val = Fmt::money($row['total_debt']); $bg = $row['total_debt']>0 ? '#fee2e2':'#dcfce7'; $fg = $row['total_debt']>0?'#dc2626':'#16a34a'; }
-                                        elseif ($key === 'special_costs') { $sc = $row['special_costs']; $val = $sc['value']>0 ? Fmt::money($sc['value']) : ''; $bg = $stateBg[$sc['state']]; $fg = $stateFg[$sc['state']]; }
+                                        elseif ($key === 'special_costs') { $sc = $row['special_costs']; $bg = $stateBg[$sc['state']]; $fg = $stateFg[$sc['state']]; $val = $sc['state']==='neutral' ? '' : ($sc['state']==='paid' ? '✓' : Fmt::money($sc['owed'])); }
                                         elseif ($key === 'credit') { $val = $row['credit_balance']>0 ? Fmt::money($row['credit_balance']) : ''; if ($row['credit_balance']>0) { $bg = '#eef0fb'; $fg = '#5b5bd6'; } }
                                         elseif ($key === 'notes') { $val = $row['notes']; }
                                         elseif (str_starts_with($key, 'month_')) {
-                                            $cell = $row['months'][$col['month']];
-                                            $val = Fmt::money($cell['value']); $bg = $stateBg[$cell['state']]; $fg = $stateFg[$cell['state']];
+                                            $cell = $row['months'][$col['month']]; $bg = $stateBg[$cell['state']]; $fg = $stateFg[$cell['state']];
+                                            $val = $cell['state']==='neutral' ? '' : ($cell['state']==='paid' ? '✓' : Fmt::money($cell['owed']));
                                         }
                                     @endphp
                                     <td class="border border-[#eee] px-2.5 py-2 text-center font-semibold {{ $key === 'notes' ? 'min-w-[180px] whitespace-pre-line text-right text-[10.5px] leading-5' : 'whitespace-nowrap' }}" style="background:{{ $bg }};color:{{ $fg }}">{{ $val !== '' ? $val : '—' }}</td>

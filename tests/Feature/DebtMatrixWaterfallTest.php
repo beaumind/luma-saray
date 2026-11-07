@@ -70,6 +70,11 @@ class DebtMatrixWaterfallTest extends TestCase
         $this->assertSame('paid', $row['months'][$tirIdx]['state']);
         $this->assertSame('unpaid', $row['months'][$mordadIdx]['state']);
         $this->assertSame(6_000_000, $row['total_debt']);
+
+        // Every cell reports what is still owed: nothing for the settled month,
+        // the full charge for the unpaid one.
+        $this->assertSame(0, $row['months'][$tirIdx]['owed']);
+        $this->assertSame(6_000_000, $row['months'][$mordadIdx]['owed']);
     }
 
     public function test_over_refunded_creditor_does_not_show_a_phantom_credit(): void

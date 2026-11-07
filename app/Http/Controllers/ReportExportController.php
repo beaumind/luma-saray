@@ -48,6 +48,13 @@ class ReportExportController extends Controller
         $key = $col['key'];
 
         $money = fn ($rial) => number_format(Fmt::display((int) $rial));
+        // Every debt cell shows the outstanding amount: ✓ when settled, blank
+        // when nothing was due, otherwise the still-unpaid remainder.
+        $owed = fn (array $cell) => match ($cell['state']) {
+            'neutral' => '',
+            'paid' => '✓',
+            default => $money($cell['owed']),
+        };
 
         return match (true) {
             $key === 'number' => (string) $row['number'],
@@ -56,11 +63,11 @@ class ReportExportController extends Controller
             $key === 'count' => (string) $row['count'],
             $key === 'monthly_charge' => $money($row['monthly_charge']),
             $key === 'past_debt' => $money($row['past_debt']),
-            $key === 'special_costs' => $row['special_costs']['value'] > 0 ? $money($row['special_costs']['value']) : '',
+            $key === 'special_costs' => $owed($row['special_costs']),
             $key === 'total_debt' => $money($row['total_debt']),
             $key === 'credit' => $row['credit_balance'] > 0 ? $money($row['credit_balance']) : '',
             $key === 'notes' => $row['notes'],
-            str_starts_with($key, 'month_') => $money($row['months'][$col['month']]['value']),
+            str_starts_with($key, 'month_') => $owed($row['months'][$col['month']]),
             default => '',
         };
     }

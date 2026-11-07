@@ -254,7 +254,10 @@ class DebtMatrix
                 } else {
                     $state = 'partial';
                 }
-                $cells[] = ['value' => $paid, 'state' => $state];
+                // `value` is what was paid (kept for compatibility); `owed` is the
+                // still-unpaid remainder — the figure every cell now shows so the
+                // whole table reads as one thing: outstanding debt.
+                $cells[] = ['value' => $paid, 'owed' => max(0, $charged - $paid), 'state' => $state];
             }
 
             $rows[] = [
@@ -265,7 +268,7 @@ class DebtMatrix
                 'monthly_charge' => $latestCharge['amount'],
                 'past_debt' => max($pastDebt, 0),
                 'months' => $cells,
-                'special_costs' => ['value' => $scCharged, 'state' => $scState],
+                'special_costs' => ['value' => $scCharged, 'owed' => max(0, $scCharged - $scPaid), 'state' => $scState],
                 'total_debt' => max($totalDebt, 0),
                 // Net the standing creditor balance with any over-payment BEFORE
                 // clamping: a unit refunded slightly more than its fronted credit
