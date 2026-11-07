@@ -349,7 +349,7 @@ class DebtMatrix
         foreach ($list as [$y, $m]) {
             [$s, $e] = JDate::gregorianMonthRange($y, $m);
             $periods[] = [
-                'label' => self::MONTH_NAMES[$m - 1].($showYear ? ' '.JDate::toPersianDigits((string) $y) : ''),
+                'label' => 'شارژ '.self::MONTH_NAMES[$m - 1].' ماه'.($showYear ? ' '.JDate::toPersianDigits((string) $y) : ''),
                 'start' => $s, 'end' => $e,
             ];
         }

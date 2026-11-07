@@ -39,7 +39,7 @@ class DebtMatrixWaterfallTest extends TestCase
         $this->travelBack();
 
         $row = collect($matrix['rows'])->firstWhere('number', '4');
-        $tirIdx = collect($matrix['periods'])->search(fn ($p) => str_starts_with($p['label'], 'تیر'));
+        $tirIdx = collect($matrix['periods'])->search(fn ($p) => str_contains($p['label'], 'تیر'));
 
         $this->assertNotFalse($tirIdx, 'تیر column should be present in the summer season');
         $this->assertSame('paid', $row['months'][$tirIdx]['state'], 'تیر must show as paid even though the payment date is in خرداد');
@@ -64,8 +64,8 @@ class DebtMatrixWaterfallTest extends TestCase
         $this->travelBack();
 
         $row = collect($matrix['rows'])->firstWhere('number', '4');
-        $tirIdx = collect($matrix['periods'])->search(fn ($p) => str_starts_with($p['label'], 'تیر'));
-        $mordadIdx = collect($matrix['periods'])->search(fn ($p) => str_starts_with($p['label'], 'مرداد'));
+        $tirIdx = collect($matrix['periods'])->search(fn ($p) => str_contains($p['label'], 'تیر'));
+        $mordadIdx = collect($matrix['periods'])->search(fn ($p) => str_contains($p['label'], 'مرداد'));
 
         $this->assertSame('paid', $row['months'][$tirIdx]['state']);
         $this->assertSame('unpaid', $row['months'][$mordadIdx]['state']);
