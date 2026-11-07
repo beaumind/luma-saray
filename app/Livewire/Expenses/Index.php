@@ -190,7 +190,7 @@ class Index extends Component
             ->when($this->building_id_filter, fn ($q) => $q->where('building_id', $this->building_id_filter))
             ->when($gFrom, fn ($q) => $q->whereDate('expense_date', '>=', $gFrom))
             ->when($gTo, fn ($q) => $q->whereDate('expense_date', '<=', $gTo))
-            ->orderByDesc('expense_date')->orderByDesc('id');
+            ->orderBy('expense_date')->orderBy('id');
 
         $expenses = (clone $base)->with(['building', 'category', 'creator'])->paginate(15);
         // Full filtered set (for the image export snapshot).

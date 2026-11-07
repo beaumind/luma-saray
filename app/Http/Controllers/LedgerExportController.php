@@ -115,7 +115,7 @@ class LedgerExportController extends Controller
             ->when($request->integer('building') ?: null, fn ($q, $b) => $q->where('building_id', $b))
             ->when($this->from($request), fn ($q, $d) => $q->whereDate('expense_date', '>=', $d))
             ->when($this->to($request), fn ($q, $d) => $q->whereDate('expense_date', '<=', $d))
-            ->orderByDesc('expense_date')->orderByDesc('id');
+            ->orderBy('expense_date')->orderBy('id');
     }
 
     private function paymentQuery(Request $request): Builder
