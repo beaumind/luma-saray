@@ -5,24 +5,25 @@ import Resumable from 'resumablejs';
 
 // Render an element to a PNG and trigger a download (report image export).
 window.exportReportImage = async (selector, filename = 'report.png') => {
-    const el = document.querySelector(selector);
-    if (!el) return;
-    // Let any inner horizontal scroller render at full width so the whole table
-    // (not just the visible slice) is captured together with the header above it.
-    const scrollers = el.querySelectorAll('.overflow-x-auto');
-    const saved = [];
-    scrollers.forEach((s) => { saved.push([s, s.style.overflow]); s.style.overflow = 'visible'; });
+    const src = document.querySelector(selector);
+    if (!src) return;
+    // The table is usually wider than its card, so capturing it in place clips
+    // it to the visible slice. Clone it off-screen at its FULL width (scrollers
+    // unclipped) and snapshot that, so the whole table — header included — fits.
+    const table = src.querySelector('table');
+    const fullWidth = Math.ceil((table ? table.scrollWidth : src.scrollWidth)) + 2;
+    const clone = src.cloneNode(true);
+    Object.assign(clone.style, { position: 'fixed', top: '0', left: '-100000px', width: fullWidth + 'px', maxWidth: 'none' });
+    clone.querySelectorAll('.overflow-x-auto').forEach((s) => { s.style.overflow = 'visible'; s.style.width = fullWidth + 'px'; });
+    document.body.appendChild(clone);
     try {
-        const canvas = await html2canvas(el, {
-            scale: 2, backgroundColor: '#ffffff', useCORS: true, scrollX: 0, scrollY: 0,
-            windowWidth: Math.max(document.documentElement.clientWidth, el.scrollWidth),
-        });
+        const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true, width: fullWidth, windowWidth: fullWidth });
         const link = document.createElement('a');
         link.download = filename;
         link.href = canvas.toDataURL('image/png');
         link.click();
     } finally {
-        saved.forEach(([s, v]) => { s.style.overflow = v; });
+        document.body.removeChild(clone);
     }
 };
 
