@@ -7,11 +7,23 @@ import Resumable from 'resumablejs';
 window.exportReportImage = async (selector, filename = 'report.png') => {
     const el = document.querySelector(selector);
     if (!el) return;
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-    const link = document.createElement('a');
-    link.download = filename;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    // Let any inner horizontal scroller render at full width so the whole table
+    // (not just the visible slice) is captured together with the header above it.
+    const scrollers = el.querySelectorAll('.overflow-x-auto');
+    const saved = [];
+    scrollers.forEach((s) => { saved.push([s, s.style.overflow]); s.style.overflow = 'visible'; });
+    try {
+        const canvas = await html2canvas(el, {
+            scale: 2, backgroundColor: '#ffffff', useCORS: true, scrollX: 0, scrollY: 0,
+            windowWidth: Math.max(document.documentElement.clientWidth, el.scrollWidth),
+        });
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } finally {
+        saved.forEach(([s, v]) => { s.style.overflow = v; });
+    }
 };
 
 // ---- Jalali (Persian) date picker — self-contained Alpine component ----

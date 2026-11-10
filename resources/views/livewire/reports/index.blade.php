@@ -67,8 +67,12 @@
 
         {{-- Debt matrix --}}
         <div class="overflow-hidden rounded-[16px] border border-[#ececef] bg-white">
+          <div id="debt-report" class="bg-white">
             <div class="border-b border-[#f4f4f5] px-4 py-3">
-                <div class="text-[13.5px] font-bold text-[#18181b]">جدول بدهی واحدها</div>
+                <div class="flex items-baseline justify-between gap-2">
+                    <span class="text-[13.5px] font-bold text-[#18181b]">جدول بدهی واحدها — گزارش سال {{ $yearLabel }}</span>
+                    <span class="whitespace-nowrap text-[11px] font-semibold text-[#5b5bd6]">مبالغ به {{ Fmt::currency() }}</span>
+                </div>
                 <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10.5px] text-[#71717a]">
                     <span>اعداد = مبلغِ باقی‌ماندهٔ بدهی (پرداخت‌نشده)</span>
                     <span class="flex items-center gap-1"><span class="inline-block h-2.5 w-2.5 rounded-[3px]" style="background:#dcfce7"></span>تسویه (✓)</span>
@@ -116,6 +120,7 @@
                     </tbody>
                 </table>
             </div>
+          </div>
         </div>
 
         {{-- Export buttons --}}
@@ -128,7 +133,7 @@
                class="flex h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-[12px] border border-[#ececef] bg-white text-[12.5px] font-bold text-[#3f3f46]">
                 <span class="text-[15px]">⬇</span>PDF
             </a>
-            <button type="button" onclick="exportReportImage('#debt-matrix','debt-report.png')"
+            <button type="button" onclick="exportReportImage('#debt-report','debt-report.png')"
                     class="flex h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-[12px] border border-[#ececef] bg-white text-[12.5px] font-bold text-[#3f3f46]">
                 <span class="text-[15px]">⬇</span>تصویر
             </button>
