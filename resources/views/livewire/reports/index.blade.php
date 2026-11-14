@@ -127,7 +127,6 @@
                                         $k = $col['key']; $fv = ''; $fbg = '#f6f6fd'; $ffg = '#3f3f46';
                                         if ($k === 'resident') { $fv = $frow['label']; }
                                         elseif (str_starts_with($k, 'month_')) { $fv = Fmt::money($frow['data'][$col['month']] ?? 0); $ffg = '#16a34a'; }
-                                        elseif ($k === 'total_debt') { $fv = Fmt::money($rcv['total']); $ffg = '#16a34a'; $fbg = '#eef0fb'; }
                                     @endphp
                                     <td class="whitespace-nowrap border border-[#eee] px-2.5 py-2 text-center" style="background:{{ $fbg }};color:{{ $ffg }}">{{ $fv }}</td>
                                 @endforeach

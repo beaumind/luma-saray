@@ -283,16 +283,22 @@ class DebtMatrix
         // reimbursements AND any deposits, keyed by payment date — for the
         // collection footer (received this month, and the running cumulative).
         $inTypes = ['charge', 'unit_cost', 'deposit'];
+        $sumReceived = fn ($from, $to) => (int) Payment::query()
+            ->when($buildingId, fn ($q) => $q->where('building_id', $buildingId))
+            ->whereIn('type', $inTypes)
+            ->where('payment_date', '>=', $from)->where('payment_date', '<', $to)->sum('amount');
+
+        // The cumulative runs from the start of the window's Jalali year, so a
+        // partial (e.g. seasonal) window still shows the true year-to-date total,
+        // not just what came in during the visible months.
+        $winStart = $periods[0]['start'];
+        [$yearStart] = JDate::gregorianMonthRange((int) Jalalian::fromCarbon($winStart)->getYear(), 1);
+        $running = $sumReceived($yearStart, $winStart);
+
         $perPeriod = [];
         $cumulative = [];
-        $running = 0;
         foreach ($periods as $i => $p) {
-            $sum = (int) Payment::query()
-                ->when($buildingId, fn ($q) => $q->where('building_id', $buildingId))
-                ->whereIn('type', $inTypes)
-                ->where('payment_date', '>=', $p['start'])
-                ->where('payment_date', '<', $p['end'])
-                ->sum('amount');
+            $sum = $sumReceived($p['start'], $p['end']);
             $perPeriod[$i] = $sum;
             $running += $sum;
             $cumulative[$i] = $running;
