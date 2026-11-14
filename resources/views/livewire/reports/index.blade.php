@@ -120,14 +120,14 @@
                     </tbody>
                     <tfoot>
                         @php $rcv = $matrix['received']; @endphp
-                        @foreach([['label' => 'جمع دریافتی ماه', 'data' => $rcv['perPeriod']], ['label' => 'جمع کل دریافتی', 'data' => $rcv['cumulative']]] as $frow)
+                        @foreach([['label' => 'جمع دریافتی ماه', 'data' => $rcv['perPeriod'], 'special' => $rcv['special']], ['label' => 'جمع کل دریافتی', 'data' => $rcv['cumulative'], 'special' => $rcv['specialCumulative']]] as $frow)
                             <tr class="font-bold">
                                 @foreach($visibleCols as $col)
                                     @php
                                         $k = $col['key']; $fv = ''; $fbg = '#f6f6fd'; $ffg = '#3f3f46';
                                         if ($k === 'resident') { $fv = $frow['label']; }
                                         elseif (str_starts_with($k, 'month_')) { $fv = Fmt::money($frow['data'][$col['month']] ?? 0); $ffg = '#16a34a'; }
-                                        elseif ($k === 'special_costs') { $fv = Fmt::money($rcv['special']); $ffg = '#16a34a'; }
+                                        elseif ($k === 'special_costs') { $fv = Fmt::money($frow['special']); $ffg = '#16a34a'; }
                                     @endphp
                                     <td class="whitespace-nowrap border border-[#eee] px-2.5 py-2 text-center" style="background:{{ $fbg }};color:{{ $ffg }}">{{ $fv }}</td>
                                 @endforeach

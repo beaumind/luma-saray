@@ -68,12 +68,11 @@ class DebtMatrix
             ? collect()
             : Payment::whereIn('id', $paymentIds)->get(['id', 'type', 'expense_id'])->keyBy('id');
 
-        // Collection footer accumulators — the amount COLLECTED toward each
-        // month's charges (and toward special costs), summed across units. This
-        // matches the cells (a ✓ month has its charge covered), so a month paid
-        // from an earlier over-payment still counts here.
+        // Collection footer accumulator — the amount COLLECTED toward each
+        // month's charges, summed across units. This matches the cells (a ✓
+        // month has its charge covered), so a month paid from an earlier
+        // over-payment still counts here.
         $paidByPeriod = array_fill(0, count($periods), 0);
-        $specialPaidTotal = 0;
 
         $rows = [];
         foreach ($units as $unit) {
@@ -236,7 +235,6 @@ class DebtMatrix
             $scCharged = $special['charged'];
             $scPaid = $special['paid'];
             $scState = $scCharged <= 0 ? 'neutral' : ($scPaid >= $scCharged ? 'paid' : ($scPaid <= 0 ? 'unpaid' : 'partial'));
-            $specialPaidTotal += $scPaid;
 
             // Description: spell out what the debt is for — past unpaid charge
             // months, then past unpaid cost shares, then in-window cost shares.
@@ -288,21 +286,33 @@ class DebtMatrix
             ];
         }
 
-        // Collection footer, scoped to the visible window: how much was COLLECTED
+        // Charge collection, scoped to the visible window: how much was COLLECTED
         // toward each month's charges (so a month settled from an earlier
-        // over-payment counts, matching its ✓ cell), the running cumulative, and
-        // the total collected toward special costs.
+        // over-payment counts, matching its ✓ cell) and the running cumulative.
         $cumulative = [];
         $running = 0;
         foreach ($paidByPeriod as $i => $sum) {
             $running += $sum;
             $cumulative[$i] = $running;
         }
+
+        // Special-cost (and deposit) receipts by payment date: this window, and
+        // the all-time cumulative so the «جمع کل» row carries earlier records.
+        $winStart = $periods[0]['start'];
+        $winEnd = $periods[count($periods) - 1]['end'];
+        $specialUpTo = fn ($to) => (int) Payment::query()
+            ->when($buildingId, fn ($q) => $q->where('building_id', $buildingId))
+            ->whereIn('type', ['unit_cost', 'deposit'])
+            ->where('payment_date', '<', $to)->sum('amount');
+        $specialCumulative = $specialUpTo($winEnd);
+        $specialWindow = $specialCumulative - $specialUpTo($winStart);
+
         $received = [
             'perPeriod' => $paidByPeriod,
             'cumulative' => $cumulative,
-            'special' => $specialPaidTotal,
-            'total' => $running + $specialPaidTotal,
+            'special' => $specialWindow,
+            'specialCumulative' => $specialCumulative,
+            'total' => $running + $specialWindow,
         ];
 
         $building = $buildingId ? Building::find($buildingId) : null;
