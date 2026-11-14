@@ -223,6 +223,7 @@ class ReportExportController extends Controller
         return match (true) {
             $key === 'resident' => $which === 'cumulative' ? 'جمع کل دریافتی' : 'جمع دریافتی ماه',
             str_starts_with($key, 'month_') => $money($data[$col['month']] ?? 0),
+            $key === 'special_costs' => $money($rcv['special']),
             default => '',
         };
     }

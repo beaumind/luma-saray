@@ -98,7 +98,7 @@ class DebtMatrixWaterfallTest extends TestCase
         $this->assertSame(6_000_000, $rcv['total']);
     }
 
-    public function test_cumulative_received_is_year_to_date_not_window_only(): void
+    public function test_collection_footer_is_scoped_to_the_visible_season(): void
     {
         $admin = app(CreateOrganization::class)->handle('Org', 'Admin', '09120000008', 'secret123');
         $this->actingAs($admin);
@@ -106,20 +106,19 @@ class DebtMatrixWaterfallTest extends TestCase
         $unit = Unit::create(['building_id' => $building->id, 'number' => '1']);
 
         $pay = app(PaymentService::class);
-        $pay->register($unit, ['amount' => 5_000_000, 'payment_date' => '2026-04-01']); // فروردین ۱۴۰۵
-        $pay->register($unit, ['amount' => 3_000_000, 'payment_date' => '2026-09-25']); // مهر ۱۴۰۵
+        $pay->register($unit, ['amount' => 5_000_000, 'payment_date' => '2026-04-01']); // فروردین — outside autumn
+        $pay->register($unit, ['amount' => 3_000_000, 'payment_date' => '2026-09-25']); // مهر — in autumn
 
-        // Autumn season (مهر/آبان/آذر) — فروردین is before the visible window.
+        // Autumn season (مهر/آبان/آذر): فروردین must NOT count toward it.
         $this->travelTo(Carbon::parse('2026-12-01'));
         $matrix = DebtMatrix::build($building->id, 'seasonal', 1);
         $this->travelBack();
 
         $mehrIdx = collect($matrix['periods'])->search(fn ($p) => str_contains($p['label'], 'مهر'));
         $rcv = $matrix['received'];
-        // This month received only مهر's 3M, but the cumulative carries فروردین's 5M too.
         $this->assertSame(3_000_000, $rcv['perPeriod'][$mehrIdx]);
-        $this->assertSame(8_000_000, $rcv['cumulative'][$mehrIdx]);
-        $this->assertSame(8_000_000, $rcv['total']);
+        $this->assertSame(3_000_000, $rcv['cumulative'][$mehrIdx]);
+        $this->assertSame(3_000_000, $rcv['total']);
     }
 
     public function test_over_refunded_creditor_does_not_show_a_phantom_credit(): void

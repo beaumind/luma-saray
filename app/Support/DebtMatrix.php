@@ -279,31 +279,26 @@ class DebtMatrix
             ];
         }
 
-        // Money actually received into the fund per period — charges, special-cost
-        // reimbursements AND any deposits, keyed by payment date — for the
-        // collection footer (received this month, and the running cumulative).
-        $inTypes = ['charge', 'unit_cost', 'deposit'];
-        $sumReceived = fn ($from, $to) => (int) Payment::query()
+        // Collection footer, scoped to the visible window (the season/period):
+        //  - month columns  → monthly CHARGE received that month + running total
+        //  - special column → special-cost reimbursements (and any deposits)
+        //    received in the window, so unexpected-cost payments show too.
+        $sumType = fn (array $types, $from, $to) => (int) Payment::query()
             ->when($buildingId, fn ($q) => $q->where('building_id', $buildingId))
-            ->whereIn('type', $inTypes)
+            ->whereIn('type', $types)
             ->where('payment_date', '>=', $from)->where('payment_date', '<', $to)->sum('amount');
-
-        // The cumulative runs from the start of the window's Jalali year, so a
-        // partial (e.g. seasonal) window still shows the true year-to-date total,
-        // not just what came in during the visible months.
-        $winStart = $periods[0]['start'];
-        [$yearStart] = JDate::gregorianMonthRange((int) Jalalian::fromCarbon($winStart)->getYear(), 1);
-        $running = $sumReceived($yearStart, $winStart);
 
         $perPeriod = [];
         $cumulative = [];
+        $running = 0;
         foreach ($periods as $i => $p) {
-            $sum = $sumReceived($p['start'], $p['end']);
+            $sum = $sumType(['charge'], $p['start'], $p['end']);
             $perPeriod[$i] = $sum;
             $running += $sum;
             $cumulative[$i] = $running;
         }
-        $received = ['perPeriod' => $perPeriod, 'cumulative' => $cumulative, 'total' => $running];
+        $special = $sumType(['unit_cost', 'deposit'], $periods[0]['start'], $periods[count($periods) - 1]['end']);
+        $received = ['perPeriod' => $perPeriod, 'cumulative' => $cumulative, 'special' => $special, 'total' => $running + $special];
 
         $building = $buildingId ? Building::find($buildingId) : null;
         $title = 'گزارش بدهی واحدها'.($building ? ' — '.$building->name : '');
