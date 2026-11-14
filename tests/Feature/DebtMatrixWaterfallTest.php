@@ -105,9 +105,12 @@ class DebtMatrixWaterfallTest extends TestCase
         $building = Building::create(['name' => 'B', 'address' => 'x', 'city' => 'y']);
         $unit = Unit::create(['building_id' => $building->id, 'number' => '1']);
 
+        $ledger = app(LedgerService::class);
         $pay = app(PaymentService::class);
-        $pay->register($unit, ['amount' => 5_000_000, 'payment_date' => '2026-04-01']); // فروردین — outside autumn
-        $pay->register($unit, ['amount' => 3_000_000, 'payment_date' => '2026-09-25']); // مهر — in autumn
+        $ledger->recordCharge($unit, 5_000_000, 'شارژ فروردین', '2026-04-01');  // outside autumn
+        $pay->register($unit, ['amount' => 5_000_000, 'payment_date' => '2026-04-01']);
+        $ledger->recordCharge($unit, 3_000_000, 'شارژ مهر', '2026-09-23');       // in autumn
+        $pay->register($unit, ['amount' => 3_000_000, 'payment_date' => '2026-09-25']);
 
         // Autumn season (مهر/آبان/آذر): فروردین must NOT count toward it.
         $this->travelTo(Carbon::parse('2026-12-01'));

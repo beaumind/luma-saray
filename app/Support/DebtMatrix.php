@@ -68,6 +68,13 @@ class DebtMatrix
             ? collect()
             : Payment::whereIn('id', $paymentIds)->get(['id', 'type', 'expense_id'])->keyBy('id');
 
+        // Collection footer accumulators — the amount COLLECTED toward each
+        // month's charges (and toward special costs), summed across units. This
+        // matches the cells (a ✓ month has its charge covered), so a month paid
+        // from an earlier over-payment still counts here.
+        $paidByPeriod = array_fill(0, count($periods), 0);
+        $specialPaidTotal = 0;
+
         $rows = [];
         foreach ($units as $unit) {
             $txs = $txByUnit->get($unit->id, collect());
@@ -229,6 +236,7 @@ class DebtMatrix
             $scCharged = $special['charged'];
             $scPaid = $special['paid'];
             $scState = $scCharged <= 0 ? 'neutral' : ($scPaid >= $scCharged ? 'paid' : ($scPaid <= 0 ? 'unpaid' : 'partial'));
+            $specialPaidTotal += $scPaid;
 
             // Description: spell out what the debt is for — past unpaid charge
             // months, then past unpaid cost shares, then in-window cost shares.
@@ -242,9 +250,10 @@ class DebtMatrix
             }
 
             $cells = [];
-            foreach ($buckets as $b) {
+            foreach ($buckets as $bi => $b) {
                 $charged = $b['charged'];
                 $paid = $b['paid'];
+                $paidByPeriod[$bi] += $paid;
                 if ($charged <= 0 && $paid <= 0) {
                     $state = 'neutral';
                 } elseif ($paid >= $charged && $charged > 0) {
@@ -279,26 +288,22 @@ class DebtMatrix
             ];
         }
 
-        // Collection footer, scoped to the visible window (the season/period):
-        //  - month columns  → monthly CHARGE received that month + running total
-        //  - special column → special-cost reimbursements (and any deposits)
-        //    received in the window, so unexpected-cost payments show too.
-        $sumType = fn (array $types, $from, $to) => (int) Payment::query()
-            ->when($buildingId, fn ($q) => $q->where('building_id', $buildingId))
-            ->whereIn('type', $types)
-            ->where('payment_date', '>=', $from)->where('payment_date', '<', $to)->sum('amount');
-
-        $perPeriod = [];
+        // Collection footer, scoped to the visible window: how much was COLLECTED
+        // toward each month's charges (so a month settled from an earlier
+        // over-payment counts, matching its ✓ cell), the running cumulative, and
+        // the total collected toward special costs.
         $cumulative = [];
         $running = 0;
-        foreach ($periods as $i => $p) {
-            $sum = $sumType(['charge'], $p['start'], $p['end']);
-            $perPeriod[$i] = $sum;
+        foreach ($paidByPeriod as $i => $sum) {
             $running += $sum;
             $cumulative[$i] = $running;
         }
-        $special = $sumType(['unit_cost', 'deposit'], $periods[0]['start'], $periods[count($periods) - 1]['end']);
-        $received = ['perPeriod' => $perPeriod, 'cumulative' => $cumulative, 'special' => $special, 'total' => $running + $special];
+        $received = [
+            'perPeriod' => $paidByPeriod,
+            'cumulative' => $cumulative,
+            'special' => $specialPaidTotal,
+            'total' => $running + $specialPaidTotal,
+        ];
 
         $building = $buildingId ? Building::find($buildingId) : null;
         $title = 'گزارش بدهی واحدها'.($building ? ' — '.$building->name : '');
