@@ -77,6 +77,27 @@ class DebtMatrixWaterfallTest extends TestCase
         $this->assertSame(6_000_000, $row['months'][$mordadIdx]['owed']);
     }
 
+    public function test_collection_footer_totals_received_per_period(): void
+    {
+        $admin = app(CreateOrganization::class)->handle('Org', 'Admin', '09120000007', 'secret123');
+        $this->actingAs($admin);
+        $building = Building::create(['name' => 'B', 'address' => 'x', 'city' => 'y']);
+        $unit = Unit::create(['building_id' => $building->id, 'number' => '1']);
+
+        app(LedgerService::class)->recordCharge($unit, 6_000_000, 'شارژ تیر', '2026-06-22');
+        app(PaymentService::class)->register($unit, ['amount' => 6_000_000, 'payment_date' => '2026-06-25']);
+
+        $this->travelTo(Carbon::parse('2026-08-02'));
+        $matrix = DebtMatrix::build($building->id, 'seasonal', 1);
+        $this->travelBack();
+
+        $tirIdx = collect($matrix['periods'])->search(fn ($p) => str_contains($p['label'], 'تیر'));
+        $rcv = $matrix['received'];
+        $this->assertSame(6_000_000, $rcv['perPeriod'][$tirIdx]);
+        $this->assertSame(6_000_000, $rcv['cumulative'][$tirIdx]);
+        $this->assertSame(6_000_000, $rcv['total']);
+    }
+
     public function test_over_refunded_creditor_does_not_show_a_phantom_credit(): void
     {
         $admin = app(CreateOrganization::class)->handle('Org', 'Admin', '09120000003', 'secret123');

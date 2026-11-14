@@ -118,6 +118,22 @@
                             <tr><td colspan="{{ $visibleCols->count() }}" class="px-4 py-8 text-center text-[#a1a1aa]">داده‌ای برای نمایش نیست</td></tr>
                         @endforelse
                     </tbody>
+                    <tfoot>
+                        @php $rcv = $matrix['received']; @endphp
+                        @foreach([['label' => 'جمع دریافتی ماه', 'data' => $rcv['perPeriod']], ['label' => 'جمع کل دریافتی', 'data' => $rcv['cumulative']]] as $frow)
+                            <tr class="font-bold">
+                                @foreach($visibleCols as $col)
+                                    @php
+                                        $k = $col['key']; $fv = ''; $fbg = '#f6f6fd'; $ffg = '#3f3f46';
+                                        if ($k === 'resident') { $fv = $frow['label']; }
+                                        elseif (str_starts_with($k, 'month_')) { $fv = Fmt::money($frow['data'][$col['month']] ?? 0); $ffg = '#16a34a'; }
+                                        elseif ($k === 'total_debt') { $fv = Fmt::money($rcv['total']); $ffg = '#16a34a'; $fbg = '#eef0fb'; }
+                                    @endphp
+                                    <td class="whitespace-nowrap border border-[#eee] px-2.5 py-2 text-center" style="background:{{ $fbg }};color:{{ $ffg }}">{{ $fv }}</td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tfoot>
                 </table>
             </div>
           </div>

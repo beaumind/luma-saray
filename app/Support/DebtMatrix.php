@@ -279,6 +279,26 @@ class DebtMatrix
             ];
         }
 
+        // Money actually received into the fund per period — charges, special-cost
+        // reimbursements AND any deposits, keyed by payment date — for the
+        // collection footer (received this month, and the running cumulative).
+        $inTypes = ['charge', 'unit_cost', 'deposit'];
+        $perPeriod = [];
+        $cumulative = [];
+        $running = 0;
+        foreach ($periods as $i => $p) {
+            $sum = (int) Payment::query()
+                ->when($buildingId, fn ($q) => $q->where('building_id', $buildingId))
+                ->whereIn('type', $inTypes)
+                ->where('payment_date', '>=', $p['start'])
+                ->where('payment_date', '<', $p['end'])
+                ->sum('amount');
+            $perPeriod[$i] = $sum;
+            $running += $sum;
+            $cumulative[$i] = $running;
+        }
+        $received = ['perPeriod' => $perPeriod, 'cumulative' => $cumulative, 'total' => $running];
+
         $building = $buildingId ? Building::find($buildingId) : null;
         $title = 'گزارش بدهی واحدها'.($building ? ' — '.$building->name : '');
 
@@ -288,6 +308,7 @@ class DebtMatrix
             'periods' => $periods,
             'columns' => self::columns($periods),
             'rows' => $rows,
+            'received' => $received,
         ];
     }
 

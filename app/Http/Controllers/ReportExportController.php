@@ -137,6 +137,18 @@ class ReportExportController extends Controller
             $rowIndex++;
         }
 
+        // Collection footer: received this month, then the running cumulative.
+        foreach (['month', 'cumulative'] as $which) {
+            foreach ($columns as $i => $col) {
+                $coord = $letters[$i].$rowIndex;
+                $sheet->setCellValueExplicit($coord, $this->footerCell($matrix, $col, $which), DataType::TYPE_STRING);
+                $sheet->getStyle($coord)->getFont()->setBold(true);
+                $sheet->getStyle($coord)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle($coord)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('EEF0FB');
+            }
+            $rowIndex++;
+        }
+
         foreach ($letters as $letter) {
             $sheet->getColumnDimension($letter)->setWidth(16);
         }
@@ -198,5 +210,21 @@ class ReportExportController extends Controller
     public function fillHex(array $row, array $col): ?string
     {
         return $this->cellFill($row, $col);
+    }
+
+    /** One collection-footer cell. $which is 'month' (received that month) or 'cumulative'. */
+    public function footerCell(array $matrix, array $col, string $which): string
+    {
+        $rcv = $matrix['received'];
+        $money = fn ($rial) => number_format(Fmt::display((int) $rial));
+        $key = $col['key'];
+        $data = $which === 'cumulative' ? $rcv['cumulative'] : $rcv['perPeriod'];
+
+        return match (true) {
+            $key === 'resident' => $which === 'cumulative' ? 'جمع کل دریافتی' : 'جمع دریافتی ماه',
+            str_starts_with($key, 'month_') => $money($data[$col['month']] ?? 0),
+            $key === 'total_debt' => $money($rcv['total']),
+            default => '',
+        };
     }
 }

@@ -31,6 +31,15 @@
                 </tr>
             @endforeach
         </tbody>
+        <tfoot>
+            @foreach(['month', 'cumulative'] as $which)
+                <tr style="font-weight:bold;background:#eef0fb">
+                    @foreach($columns as $col)
+                        <td>{{ $controller->footerCell($matrix, $col, $which) }}</td>
+                    @endforeach
+                </tr>
+            @endforeach
+        </tfoot>
     </table>
     <div class="muted">تاریخ تولید گزارش: {{ \App\Support\JDate::today() }}</div>
 </body>
