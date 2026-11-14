@@ -68,11 +68,15 @@ class DebtMatrix
             ? collect()
             : Payment::whereIn('id', $paymentIds)->get(['id', 'type', 'expense_id'])->keyBy('id');
 
-        // Collection footer accumulator — the amount COLLECTED toward each
-        // month's charges, summed across units. This matches the cells (a ✓
-        // month has its charge covered), so a month paid from an earlier
-        // over-payment still counts here.
+        // Collection footer accumulators — all coverage-based, so the footer
+        // matches the ✓ cells and nothing is double-counted (a special-cost
+        // over-payment that spills onto a charge is only ever counted once):
+        //  - paidByPeriod: collected toward each month's charges
+        //  - specialWindowTotal: collected toward this window's special costs
+        //  - specialAllTotal: collected toward ALL special costs (cumulative)
         $paidByPeriod = array_fill(0, count($periods), 0);
+        $specialWindowTotal = 0;
+        $specialAllTotal = 0;
 
         $rows = [];
         foreach ($units as $unit) {
@@ -213,6 +217,7 @@ class DebtMatrix
             foreach ($costs as $d) {
                 $uncovered = $d['amount'] - $d['covered'];
                 $totalDebt += $uncovered;
+                $specialAllTotal += $d['covered'];
                 $exp = $expenseMap->get($d['ref']);
                 $who = $respLabel[$exp?->responsible] ?? 'مالک واحد';
                 $note = fn () => Fmt::money($uncovered).' '.Fmt::currency().' بدهی بابت '.($exp?->title ?? 'هزینهٔ ویژه').' ('.$who.')';
@@ -226,6 +231,7 @@ class DebtMatrix
                 }
                 $special['charged'] += $d['amount'];
                 $special['paid'] += $d['covered'];
+                $specialWindowTotal += $d['covered'];
 
                 if (Fmt::display($uncovered) > 0) {
                     $specialNotes[] = $note();
@@ -296,23 +302,12 @@ class DebtMatrix
             $cumulative[$i] = $running;
         }
 
-        // Special-cost (and deposit) receipts by payment date: this window, and
-        // the all-time cumulative so the «جمع کل» row carries earlier records.
-        $winStart = $periods[0]['start'];
-        $winEnd = $periods[count($periods) - 1]['end'];
-        $specialUpTo = fn ($to) => (int) Payment::query()
-            ->when($buildingId, fn ($q) => $q->where('building_id', $buildingId))
-            ->whereIn('type', ['unit_cost', 'deposit'])
-            ->where('payment_date', '<', $to)->sum('amount');
-        $specialCumulative = $specialUpTo($winEnd);
-        $specialWindow = $specialCumulative - $specialUpTo($winStart);
-
         $received = [
             'perPeriod' => $paidByPeriod,
             'cumulative' => $cumulative,
-            'special' => $specialWindow,
-            'specialCumulative' => $specialCumulative,
-            'total' => $running + $specialWindow,
+            'special' => $specialWindowTotal,       // special collected this window
+            'specialCumulative' => $specialAllTotal, // + earlier records
+            'total' => $running + $specialWindowTotal,
         ];
 
         $building = $buildingId ? Building::find($buildingId) : null;
